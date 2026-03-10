@@ -1,0 +1,60 @@
+{
+  "name": "gologin-web-access",
+  "version": "0.1.0",
+  "description": "Unified web access CLI for developers and AI agents to read and interact with the web using GoLogin Web Unlocker and Cloud Browser.",
+  "main": "dist/cli.js",
+  "bin": {
+    "gologin-web-access": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "preferGlobal": true,
+  "engines": {
+    "node": ">=18.17"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/cli.ts",
+    "start": "node dist/cli.js",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "release:check": "npm run typecheck && npm run build && npm pack --dry-run",
+    "prepublishOnly": "npm run typecheck && npm run build && npm pack --dry-run"
+  },
+  "dependencies": {
+    "commander": "^14.0.1",
+    "gologin-agent-browser-cli": "^0.1.3"
+  },
+  "keywords": [
+    "gologin",
+    "web-access",
+    "cli",
+    "webunlocker",
+    "scraping",
+    "cloud-browser",
+    "browser-automation",
+    "agent"
+  ],
+  "author": "GoLogin",
+  "license": "MIT",
+  "homepage": "https://gologin.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GologinLabs/gologin-web-access.git"
+  },
+  "bugs": {
+    "url": "https://github.com/GologinLabs/gologin-web-access/issues"
+  },
+  "packageManager": "npm@10",
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.10",
+    "tsx": "^4.20.5",
+    "typescript": "^5.8.2"
+  }
+}
