@@ -1,12 +1,12 @@
-# GoLogin Web Access
+# Gologin Web Access
 
-GoLogin Web Access lets developers and AI agents read and interact with the web using GoLogin Web Unlocker and GoLogin Cloud Browser.
+Gologin Web Access lets developers and AI agents read and interact with the web using Gologin Web Unlocker and Gologin Cloud Browser.
 
 This is a unified web access layer, not just a scraping tool and not just a browser automation tool.
 
 - Read the web through stateless extraction APIs
 - Interact with the web through stateful cloud browser sessions
-- Carry GoLogin’s browser-side strengths into those workflows: profiles, identity-aware browser sessions, cloud browser infrastructure, and GoLogin’s profile/proxy stack when you run against a configured profile
+- Carry Gologin’s browser-side strengths into those workflows: profiles, identity-aware browser sessions, cloud browser infrastructure, and Gologin’s profile/proxy stack when you run against a configured profile
 
 Package name and binary are the same:
 
@@ -15,7 +15,7 @@ Package name and binary are the same:
 
 ## What It Unifies
 
-GoLogin Web Access combines two existing product surfaces behind one CLI:
+Gologin Web Access combines two existing product surfaces behind one CLI:
 
 - Web Unlocker
   Stateless read and extraction. Best when you want page content quickly without maintaining a browser session.
@@ -28,7 +28,7 @@ The point of the unified CLI is that both modes live in one product with one com
 
 ### Scraping / Read
 
-These commands use GoLogin Web Unlocker:
+These commands use Gologin Web Unlocker:
 
 - `gologin-web-access scrape <url>`
 - `gologin-web-access scrape-markdown <url>`
@@ -40,7 +40,7 @@ Use these when you want stateless page retrieval or extracted content.
 
 ### Browser / Interact
 
-These commands use GoLogin Cloud Browser through the local daemon-backed agent layer:
+These commands use Gologin Cloud Browser through the local daemon-backed agent layer:
 
 - `gologin-web-access open <url> [--profile <id>]`
 - `gologin-web-access snapshot`
@@ -64,12 +64,12 @@ Use these when you need state, interaction, or multi-step browser flows.
 
 The read layer matters, but this product is broader than a Firecrawl-like “read the page” use case.
 
-What makes GoLogin Web Access different is the ability to move from stateless extraction into stateful browser interaction without leaving the CLI:
+What makes Gologin Web Access different is the ability to move from stateless extraction into stateful browser interaction without leaving the CLI:
 
-- Browser sessions can run through GoLogin Cloud Browser instead of a local one-off browser process.
-- Browser workflows can use a GoLogin profile via `--profile` or `GOLOGIN_DEFAULT_PROFILE_ID`.
-- That gives the CLI access to GoLogin’s identity/profile model and session layer, instead of stopping at raw fetches.
-- When a configured profile carries proxy settings, those browser-side capabilities come from the GoLogin browser stack rather than from a separate scraping-only pipeline.
+- Browser sessions can run through Gologin Cloud Browser instead of a local one-off browser process.
+- Browser workflows can use a Gologin profile via `--profile` or `GOLOGIN_DEFAULT_PROFILE_ID`.
+- That gives the CLI access to Gologin’s identity/profile model and session layer, instead of stopping at raw fetches.
+- When a configured profile carries proxy settings, those browser-side capabilities come from the Gologin browser stack rather than from a separate scraping-only pipeline.
 
 This README only documents what the current CLI actually implements. It does not claim extra browser capabilities beyond the commands listed above.
 
@@ -94,7 +94,7 @@ If the browser surface grows substantially later, a nested namespace may become 
 
 ## Credentials And Config
 
-This CLI uses two different GoLogin credentials on purpose, because the underlying products are different.
+This CLI uses two different Gologin credentials on purpose, because the underlying products are different.
 
 - `GOLOGIN_WEB_UNLOCKER_API_KEY`
   Required for Scraping / Read commands.
@@ -129,7 +129,7 @@ You can also write a minimal config file at `~/.gologin-web-access/config.json`:
 }
 ```
 
-GoLogin Web Access will also read the older path `~/.gologin-web/config.json` if it already exists, but new config writes go to `~/.gologin-web-access/config.json`.
+Gologin Web Access will also read the older path `~/.gologin-web/config.json` if it already exists, but new config writes go to `~/.gologin-web-access/config.json`.
 
 Backward-compatible aliases are also accepted for existing setups:
 
@@ -182,7 +182,7 @@ gologin-web-access close
 
 ## Product Boundaries
 
-GoLogin Web Access is intentionally built from two layers:
+Gologin Web Access is intentionally built from two layers:
 
 - Web Unlocker for stateless read and extraction
 - Cloud Browser for stateful interaction

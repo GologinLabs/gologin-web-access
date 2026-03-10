@@ -1,7 +1,7 @@
 {
   "name": "gologin-web-access",
   "version": "0.1.0",
-  "description": "Unified web access CLI for developers and AI agents to read and interact with the web using GoLogin Web Unlocker and Cloud Browser.",
+  "description": "Unified web access CLI for developers and AI agents to read and interact with the web using Gologin Web Unlocker and Cloud Browser.",
   "main": "dist/cli.js",
   "bin": {
     "gologin-web-access": "dist/cli.js"
@@ -38,7 +38,7 @@
     "browser-automation",
     "agent"
   ],
-  "author": "GoLogin",
+  "author": "Gologin",
   "license": "MIT",
   "homepage": "https://gologin.com",
   "repository": {

@@ -16,7 +16,7 @@ export async function getProfile(profileId: string, token: string): Promise<{ id
   if (!response.ok) {
     const body = await response.text();
     throw new HttpError(
-      `GoLogin profile lookup failed with status ${response.status}.`,
+      `Gologin profile lookup failed with status ${response.status}.`,
       response.status,
       body.slice(0, 300),
     );

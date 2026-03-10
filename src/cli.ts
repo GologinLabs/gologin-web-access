@@ -24,7 +24,7 @@ async function main(): Promise<void> {
 
   program
     .name("gologin-web-access")
-    .description("Read and interact with the web using GoLogin Web Unlocker and Cloud Browser.")
+    .description("Read and interact with the web using Gologin Web Unlocker and Cloud Browser.")
     .version("0.1.0")
     .showHelpAfterError()
     .showSuggestionAfterError();

@@ -7,7 +7,7 @@ export function buildConfigInitCommand(): Command {
     .description("Write ~/.gologin-web-access/config.json with current values or placeholders.")
     .option("--web-unlocker-api-key <key>", "Persist a Web Unlocker API key")
     .option("--cloud-token <token>", "Persist a Cloud Browser token")
-    .option("--default-profile-id <id>", "Persist a default GoLogin profile ID")
+    .option("--default-profile-id <id>", "Persist a default Gologin profile ID")
     .option("--daemon-port <port>", "Persist a daemon port", String(DEFAULT_DAEMON_PORT))
     .option("--force", "Overwrite an existing config file")
     .action(

@@ -74,7 +74,7 @@ async function resolveAgentCliInvocation(): Promise<AgentCliInvocation> {
   }
 
   throw new CliError(
-    "GoLogin Agent CLI is not available.",
+    "Gologin Agent CLI is not available.",
     1,
     `Install dependency \`gologin-agent-browser-cli\` or provide sibling project at ${projectRoot}.`,
   );
@@ -109,7 +109,7 @@ function spawnAndWait(
     child.on("error", reject);
     child.on("exit", (code, signal) => {
       if (signal) {
-        reject(new CliError(`GoLogin Agent CLI terminated by signal ${signal}.`));
+        reject(new CliError(`Gologin Agent CLI terminated by signal ${signal}.`));
         return;
       }
 

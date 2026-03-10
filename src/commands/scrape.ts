@@ -5,7 +5,7 @@ import { scrapeRenderedHtml } from "../lib/unlocker";
 
 export function buildScrapeCommand(): Command {
   return new Command("scrape")
-    .description("Fetch rendered HTML through GoLogin Web Unlocker.")
+    .description("Fetch rendered HTML through Gologin Web Unlocker.")
     .argument("<url>", "URL to scrape")
     .action(async (url: string) => {
       const config = await loadConfig();

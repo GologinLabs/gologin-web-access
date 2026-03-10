@@ -1,4 +1,4 @@
-# Releasing GoLogin Web Access
+# Releasing Gologin Web Access
 
 ## Before first public publish
 
