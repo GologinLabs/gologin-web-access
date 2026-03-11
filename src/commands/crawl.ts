@@ -13,6 +13,10 @@ export function buildCrawlCommand(): Command {
     .option("--max-depth <depth>", "Maximum link depth from the root URL", "2")
     .option("--concurrency <count>", "Number of concurrent requests", "4")
     .option("--include-subdomains", "Include subdomains inside the crawl scope")
+    .option("--include <patterns>", "Comma-separated URL patterns to include")
+    .option("--exclude <patterns>", "Comma-separated URL patterns to exclude")
+    .option("--ignore-query", "Normalize URLs without query parameters")
+    .option("--sitemap <mode>", "include, only, or skip", "include")
     .action(
       async (
         url: string,
@@ -22,6 +26,10 @@ export function buildCrawlCommand(): Command {
           maxDepth: string;
           concurrency: string;
           includeSubdomains?: boolean;
+          include?: string;
+          exclude?: string;
+          ignoreQuery?: boolean;
+          sitemap: string;
         },
       ) => {
         const config = await loadConfig();
@@ -32,6 +40,10 @@ export function buildCrawlCommand(): Command {
           maxDepth: normalizeNonNegativeInt(options.maxDepth, 2),
           concurrency: normalizePositiveInt(options.concurrency, 4),
           includeSubdomains: Boolean(options.includeSubdomains),
+          includePatterns: splitPatterns(options.include),
+          excludePatterns: splitPatterns(options.exclude),
+          ignoreQueryParameters: Boolean(options.ignoreQuery),
+          sitemapMode: normalizeSitemapMode(options.sitemap),
         });
 
         printJson(result);
@@ -41,6 +53,22 @@ export function buildCrawlCommand(): Command {
         }
       },
     );
+}
+
+function splitPatterns(value?: string): string[] {
+  return value
+    ? value
+        .split(",")
+        .map((pattern) => pattern.trim())
+        .filter(Boolean)
+    : [];
+}
+
+function normalizeSitemapMode(value: string): "include" | "only" | "skip" {
+  if (value === "include" || value === "only" || value === "skip") {
+    return value;
+  }
+  throw new Error(`Unsupported sitemap mode: ${value}`);
 }
 
 function normalizeFormat(value: string): ScrapeFormat {

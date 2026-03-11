@@ -35,6 +35,7 @@ These commands use Gologin Web Unlocker:
 - `gologin-web-access scrape-text <url>`
 - `gologin-web-access scrape-json <url>`
 - `gologin-web-access batch-scrape <url...> [--format html|markdown|text|json]`
+- `gologin-web-access search <query> [--limit <n>] [--country <cc>] [--language <lang>]`
 - `gologin-web-access map <url> [--limit <n>] [--max-depth <n>] [--concurrency <n>]`
 - `gologin-web-access crawl <url> [--format html|markdown|text|json] [--limit <n>] [--max-depth <n>]`
 
@@ -58,6 +59,7 @@ Use these when you need state, interaction, or multi-step browser flows.
 ## When To Use `scrape` vs `browser`
 
 - Use `scrape` commands when you need page content, extracted text, markdown, or simple structured output.
+- Use `search` when you need web discovery or SERP results before deciding what to scrape.
 - Use `map` when you need internal link discovery or a site inventory.
 - Use `crawl` when you need multi-page read-only extraction across a site.
 - Use browser commands when you need clicks, forms, navigation, screenshots, sessions, or logged-in/profile-backed flows.
@@ -167,6 +169,7 @@ export GOLOGIN_WEB_UNLOCKER_API_KEY="wu_..."
 gologin-web-access scrape https://example.com
 gologin-web-access scrape-markdown https://example.com/docs
 gologin-web-access batch-scrape https://example.com https://example.org --format json
+gologin-web-access search "gologin antidetect browser" --limit 5
 gologin-web-access map https://example.com --limit 50 --max-depth 2
 gologin-web-access crawl https://example.com --format markdown --limit 20 --max-depth 2
 ```

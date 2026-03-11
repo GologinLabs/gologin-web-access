@@ -78,7 +78,7 @@ class WebUnlockerClient {
     });
 
     if (!response.ok) {
-      const body = await safeReadText(response);
+      const body = await safeReadText(response, this.timeoutMs);
       throw new HttpError(
         `Web Unlocker request failed with status ${response.status}.`,
         response.status,
@@ -86,7 +86,7 @@ class WebUnlockerClient {
       );
     }
 
-    const content = await response.text();
+    const content = await readResponseTextWithTimeout(response, this.timeoutMs);
 
     return {
       success: true,
@@ -197,11 +197,31 @@ function assertValidTargetUrl(url: string): void {
   }
 }
 
-async function safeReadText(response: Response): Promise<string> {
+async function safeReadText(response: Response, timeoutMs = DEFAULT_TIMEOUT_MS): Promise<string> {
   try {
-    return await response.text();
+    return await readResponseTextWithTimeout(response, timeoutMs);
   } catch {
     return "";
+  }
+}
+
+async function readResponseTextWithTimeout(response: Response, timeoutMs: number): Promise<string> {
+  let timer: NodeJS.Timeout | undefined;
+
+  try {
+    return await Promise.race([
+      response.text(),
+      new Promise<string>((_, reject) => {
+        timer = setTimeout(() => {
+          void response.body?.cancel().catch(() => undefined);
+          reject(new HttpError("Web Unlocker response body timed out.", 408));
+        }, timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) {
+      clearTimeout(timer);
+    }
   }
 }
 

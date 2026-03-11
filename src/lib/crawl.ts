@@ -12,6 +12,10 @@ export interface CrawlOptions {
   maxDepth: number;
   concurrency: number;
   includeSubdomains: boolean;
+  includePatterns: string[];
+  excludePatterns: string[];
+  ignoreQueryParameters: boolean;
+  sitemapMode: "include" | "only" | "skip";
 }
 
 interface TraversedSuccessPage {
@@ -166,17 +170,18 @@ async function traverseSite(
 }> {
   const normalizedRootUrl = normalizeVisitUrl(rootUrl);
   const scope = createScope(normalizedRootUrl, options.includeSubdomains);
-  const visited = new Set<string>([normalizedRootUrl]);
+  const initialFrontier = await buildInitialFrontier(normalizedRootUrl, apiKey, scope, options);
+  const visited = new Set<string>(initialFrontier);
   const pages: TraversedPage[] = [];
 
-  let frontier = [normalizedRootUrl];
+  let frontier = initialFrontier;
 
   for (let depth = 0; depth <= options.maxDepth && frontier.length > 0 && pages.length < options.limit; depth += 1) {
     const remaining = options.limit - pages.length;
     const levelUrls = frontier.slice(0, remaining);
     const levelResults = await mapWithConcurrency(levelUrls, options.concurrency, async (url) => {
       try {
-        const page = await scrapePage(url, apiKey, scope);
+        const page = await scrapePage(url, apiKey, scope, options);
         return {
           url,
           depth,
@@ -231,10 +236,10 @@ async function traverseSite(
   };
 }
 
-async function scrapePage(url: string, apiKey: string, scope: Scope): Promise<ScrapedPage> {
+async function scrapePage(url: string, apiKey: string, scope: Scope, options: CrawlOptions): Promise<ScrapedPage> {
   const scraped = await scrapeRenderedHtml(url, apiKey);
   const data = htmlToStructuredData(scraped.content);
-  const links = extractScopedLinks(url, data.links, scope);
+  const links = extractScopedLinks(url, data.links, scope, options);
 
   return {
     url,
@@ -247,6 +252,29 @@ async function scrapePage(url: string, apiKey: string, scope: Scope): Promise<Sc
       json: data,
     },
   };
+}
+
+async function buildInitialFrontier(
+  rootUrl: string,
+  apiKey: string,
+  scope: Scope,
+  options: CrawlOptions,
+): Promise<string[]> {
+  const rootAllowed = matchesScopeRules(rootUrl, options);
+  const sitemapUrls =
+    options.sitemapMode === "skip" ? [] : await fetchSitemapUrls(rootUrl, apiKey, scope, options).catch(() => []);
+
+  if (options.sitemapMode === "only") {
+    const seeded = sitemapUrls.filter((url) => matchesScopeRules(url, options));
+    return seeded.length > 0 ? seeded.slice(0, options.limit) : rootAllowed ? [rootUrl] : [];
+  }
+
+  const urls = [
+    ...(rootAllowed ? [rootUrl] : []),
+    ...sitemapUrls.filter((url) => matchesScopeRules(url, options)),
+  ];
+
+  return Array.from(new Set(urls)).slice(0, options.limit);
 }
 
 function createScope(rootUrl: string, includeSubdomains: boolean): Scope {
@@ -263,16 +291,21 @@ function extractScopedLinks(
   pageUrl: string,
   links: Array<{ href: string; text: string }>,
   scope: Scope,
+  options: CrawlOptions,
 ): string[] {
   const normalized = new Set<string>();
 
   for (const link of links) {
-    const candidate = normalizeDiscoveredUrl(link.href, pageUrl);
+    const candidate = normalizeDiscoveredUrl(link.href, pageUrl, options.ignoreQueryParameters);
     if (!candidate) {
       continue;
     }
 
     if (!isInScope(candidate, scope)) {
+      continue;
+    }
+
+    if (!matchesScopeRules(candidate, options)) {
       continue;
     }
 
@@ -282,16 +315,19 @@ function extractScopedLinks(
   return Array.from(normalized);
 }
 
-function normalizeVisitUrl(value: string): string {
+function normalizeVisitUrl(value: string, ignoreQueryParameters = false): string {
   const parsed = new URL(value);
   parsed.hash = "";
+  if (ignoreQueryParameters) {
+    parsed.search = "";
+  }
   if (parsed.pathname === "") {
     parsed.pathname = "/";
   }
   return parsed.toString();
 }
 
-function normalizeDiscoveredUrl(href: string, pageUrl: string): string | null {
+function normalizeDiscoveredUrl(href: string, pageUrl: string, ignoreQueryParameters: boolean): string | null {
   const trimmed = href.trim();
   if (!trimmed) {
     return null;
@@ -314,6 +350,9 @@ function normalizeDiscoveredUrl(href: string, pageUrl: string): string | null {
     }
 
     resolved.hash = "";
+    if (ignoreQueryParameters) {
+      resolved.search = "";
+    }
     if (resolved.pathname === "") {
       resolved.pathname = "/";
     }
@@ -333,6 +372,78 @@ function isInScope(url: string, scope: Scope): boolean {
   }
 
   return parsed.origin === scope.rootOrigin;
+}
+
+async function fetchSitemapUrls(
+  rootUrl: string,
+  apiKey: string,
+  scope: Scope,
+  options: CrawlOptions,
+): Promise<string[]> {
+  const root = new URL(rootUrl);
+  const sitemapUrl = new URL("/sitemap.xml", root.origin).toString();
+  const scraped = await scrapeRenderedHtml(sitemapUrl, apiKey);
+  const directEntries = extractXmlLocValues(scraped.content)
+    .map((url) => normalizeVisitUrl(url, options.ignoreQueryParameters))
+    .filter((url) => isInScope(url, scope) && matchesScopeRules(url, options));
+
+  if (!scraped.content.includes("<sitemapindex")) {
+    return Array.from(new Set(directEntries));
+  }
+
+  const nested = directEntries.filter((url) => url.endsWith(".xml"));
+  const pageUrls = directEntries.filter((url) => !url.endsWith(".xml"));
+  const nestedPages = await mapWithConcurrency(nested.slice(0, 10), 2, async (url) => {
+    try {
+      const nestedScrape = await scrapeRenderedHtml(url, apiKey);
+      return extractXmlLocValues(nestedScrape.content)
+        .map((item) => normalizeVisitUrl(item, options.ignoreQueryParameters))
+        .filter((item) => isInScope(item, scope) && matchesScopeRules(item, options));
+    } catch {
+      return [];
+    }
+  });
+
+  return Array.from(new Set([...pageUrls, ...nestedPages.flat()]));
+}
+
+function extractXmlLocValues(xml: string): string[] {
+  return Array.from(xml.matchAll(/<loc>([\s\S]*?)<\/loc>/gi))
+    .map((match) => decodeXmlEntities(match[1].trim()))
+    .filter(Boolean);
+}
+
+function decodeXmlEntities(value: string): string {
+  return value
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, "\"")
+    .replace(/&#39;/g, "'");
+}
+
+function matchesScopeRules(url: string, options: CrawlOptions): boolean {
+  if (options.includePatterns.length > 0 && !matchesAnyPattern(url, options.includePatterns)) {
+    return false;
+  }
+
+  if (options.excludePatterns.length > 0 && matchesAnyPattern(url, options.excludePatterns)) {
+    return false;
+  }
+
+  return true;
+}
+
+function matchesAnyPattern(url: string, patterns: string[]): boolean {
+  return patterns.some((pattern) => buildPatternRegex(pattern).test(url));
+}
+
+function buildPatternRegex(pattern: string): RegExp {
+  const escaped = pattern
+    .trim()
+    .replace(/[.+?^${}()|[\]\\]/g, "\\$&")
+    .replace(/\*/g, ".*");
+  return new RegExp(escaped, "i");
 }
 
 async function mapWithConcurrency<TInput, TOutput>(

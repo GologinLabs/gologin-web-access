@@ -13,6 +13,7 @@ import { buildScrapeCommand } from "./commands/scrape";
 import { buildScrapeJsonCommand } from "./commands/scrapeJson";
 import { buildScrapeMarkdownCommand } from "./commands/scrapeMarkdown";
 import { buildScrapeTextCommand } from "./commands/scrapeText";
+import { buildSearchCommand } from "./commands/search";
 import { buildScreenshotCommand } from "./commands/screenshot";
 import { buildSessionsCommand } from "./commands/sessions";
 import { buildSnapshotCommand } from "./commands/snapshot";
@@ -36,6 +37,7 @@ async function main(): Promise<void> {
   program.addCommand(buildScrapeTextCommand());
   program.addCommand(buildScrapeJsonCommand());
   program.addCommand(buildBatchScrapeCommand());
+  program.addCommand(buildSearchCommand());
   program.addCommand(buildMapCommand());
   program.addCommand(buildCrawlCommand());
 
@@ -64,7 +66,7 @@ async function main(): Promise<void> {
     "after",
     `
 Command groups:
-  Scraping: gologin-web-access scrape|scrape-markdown|scrape-text|scrape-json|batch-scrape|map|crawl
+  Scraping: gologin-web-access scrape|scrape-markdown|scrape-text|scrape-json|batch-scrape|search|map|crawl
   Browser:  gologin-web-access open|snapshot|click|type|screenshot|close|sessions|current
 
 Key model:
