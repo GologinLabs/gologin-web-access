@@ -46,9 +46,25 @@ Use these when you want stateless page retrieval or extracted content.
 These commands use Gologin Cloud Browser through the local daemon-backed agent layer:
 
 - `gologin-web-access open <url> [--profile <id>]`
+- `gologin-web-access search-browser <query> [--profile <id>]`
 - `gologin-web-access snapshot`
 - `gologin-web-access click <ref>`
+- `gologin-web-access dblclick <ref>`
+- `gologin-web-access focus <ref>`
 - `gologin-web-access type <ref> <text>`
+- `gologin-web-access fill <ref> <text>`
+- `gologin-web-access hover <ref>`
+- `gologin-web-access select <ref> <value>`
+- `gologin-web-access check <ref>`
+- `gologin-web-access uncheck <ref>`
+- `gologin-web-access press <key> [target]`
+- `gologin-web-access scroll <direction> [pixels]`
+- `gologin-web-access scrollintoview <ref>`
+- `gologin-web-access wait <target|ms>`
+- `gologin-web-access get <kind> [target]`
+- `gologin-web-access find ...`
+- `gologin-web-access upload <ref> <file...>`
+- `gologin-web-access pdf <path>`
 - `gologin-web-access screenshot <path>`
 - `gologin-web-access close`
 - `gologin-web-access sessions`
@@ -63,6 +79,7 @@ Use these when you need state, interaction, or multi-step browser flows.
 - Use `map` when you need internal link discovery or a site inventory.
 - Use `crawl` when you need multi-page read-only extraction across a site.
 - Use browser commands when you need clicks, forms, navigation, screenshots, sessions, or logged-in/profile-backed flows.
+- Use browser commands when you need ref-based interaction, uploads, PDFs, semantic find flows, keyboard control, or a browser-visible search journey.
 - Use `scrape` when stateless speed matters more than interaction.
 - Use browser commands when the site requires state, continuity, or real browser behavior.
 
@@ -184,9 +201,20 @@ gologin-web-access open https://example.com
 gologin-web-access snapshot
 gologin-web-access click e3
 gologin-web-access type e5 "search terms"
+gologin-web-access wait 1500
+gologin-web-access get title
 gologin-web-access screenshot ./page.png
 gologin-web-access current
 gologin-web-access close
+```
+
+### Search In A Real Browser
+
+```bash
+export GOLOGIN_CLOUD_TOKEN="gl_..."
+
+gologin-web-access search-browser "gologin antidetect browser"
+gologin-web-access snapshot -i
 ```
 
 `snapshot` prints refs such as `e1`, `e2`, `e3`. Those refs stay valid until the page changes or you take a new snapshot.

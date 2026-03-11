@@ -1,12 +1,12 @@
 import { Command } from "commander";
 import { addSessionOption, runBrowserCommand } from "./shared";
 
-export function buildClickCommand(): Command {
-  const command = new Command("click")
-    .description("Click an element by snapshot ref.")
+export function buildDoubleClickCommand(): Command {
+  const command = new Command("dblclick")
+    .description("Double-click an element by snapshot ref.")
     .argument("<ref>", "Snapshot ref, for example e3")
     .action(async (ref: string, options: { session?: string }) => {
-      await runBrowserCommand(["click", ref], { session: options.session });
+      await runBrowserCommand(["dblclick", ref], { session: options.session });
     });
 
   return addSessionOption(command);
