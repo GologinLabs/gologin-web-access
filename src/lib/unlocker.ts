@@ -219,7 +219,7 @@ function truncate(value: string, maxLength = 300): string {
   return `${value.slice(0, maxLength)}...`;
 }
 
-function htmlToText(html: string): string {
+export function htmlToText(html: string): string {
   const withoutScripts = html
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gis, " ")
     .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gis, " ");
@@ -239,7 +239,7 @@ function htmlToText(html: string): string {
     .trim();
 }
 
-function htmlToMarkdown(html: string): string {
+export function htmlToMarkdown(html: string): string {
   let markdown = html
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gis, "")
     .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gis, "")
@@ -272,7 +272,7 @@ function htmlToMarkdown(html: string): string {
     .trim();
 }
 
-function htmlToStructuredData(html: string): ScrapeJsonData {
+export function htmlToStructuredData(html: string): ScrapeJsonData {
   const titleMatch = html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i);
   const canonicalMatch = html.match(/<link\b[^>]*rel=["']canonical["'][^>]*>/i);
   const meta: Record<string, string> = {};

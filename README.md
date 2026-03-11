@@ -35,6 +35,8 @@ These commands use Gologin Web Unlocker:
 - `gologin-web-access scrape-text <url>`
 - `gologin-web-access scrape-json <url>`
 - `gologin-web-access batch-scrape <url...> [--format html|markdown|text|json]`
+- `gologin-web-access map <url> [--limit <n>] [--max-depth <n>] [--concurrency <n>]`
+- `gologin-web-access crawl <url> [--format html|markdown|text|json] [--limit <n>] [--max-depth <n>]`
 
 Use these when you want stateless page retrieval or extracted content.
 
@@ -56,6 +58,8 @@ Use these when you need state, interaction, or multi-step browser flows.
 ## When To Use `scrape` vs `browser`
 
 - Use `scrape` commands when you need page content, extracted text, markdown, or simple structured output.
+- Use `map` when you need internal link discovery or a site inventory.
+- Use `crawl` when you need multi-page read-only extraction across a site.
 - Use browser commands when you need clicks, forms, navigation, screenshots, sessions, or logged-in/profile-backed flows.
 - Use `scrape` when stateless speed matters more than interaction.
 - Use browser commands when the site requires state, continuity, or real browser behavior.
@@ -145,6 +149,8 @@ gologin-web-access config show
 gologin-web-access doctor
 ```
 
+`doctor` now also reports which Agent Browser CLI backend it will use and whether that backend comes from the installed package or the local sibling project. When both exist, the local sibling project is preferred for development.
+
 ## Install
 
 ```bash
@@ -161,6 +167,8 @@ export GOLOGIN_WEB_UNLOCKER_API_KEY="wu_..."
 gologin-web-access scrape https://example.com
 gologin-web-access scrape-markdown https://example.com/docs
 gologin-web-access batch-scrape https://example.com https://example.org --format json
+gologin-web-access map https://example.com --limit 50 --max-depth 2
+gologin-web-access crawl https://example.com --format markdown --limit 20 --max-depth 2
 ```
 
 ### Interact With A Site

@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 import { Command } from "commander";
 import { buildBatchScrapeCommand } from "./commands/batchScrape";
+import { buildCrawlCommand } from "./commands/crawl";
 import { buildClickCommand } from "./commands/click";
 import { buildCloseCommand } from "./commands/close";
 import { buildConfigInitCommand } from "./commands/configInit";
 import { buildConfigShowCommand } from "./commands/configShow";
 import { buildCurrentCommand } from "./commands/current";
+import { buildMapCommand } from "./commands/map";
 import { buildOpenCommand } from "./commands/open";
 import { buildScrapeCommand } from "./commands/scrape";
 import { buildScrapeJsonCommand } from "./commands/scrapeJson";
@@ -34,6 +36,8 @@ async function main(): Promise<void> {
   program.addCommand(buildScrapeTextCommand());
   program.addCommand(buildScrapeJsonCommand());
   program.addCommand(buildBatchScrapeCommand());
+  program.addCommand(buildMapCommand());
+  program.addCommand(buildCrawlCommand());
 
   program.addCommand(buildOpenCommand());
   program.addCommand(buildSnapshotCommand());
@@ -60,7 +64,7 @@ async function main(): Promise<void> {
     "after",
     `
 Command groups:
-  Scraping: gologin-web-access scrape|scrape-markdown|scrape-text|scrape-json|batch-scrape
+  Scraping: gologin-web-access scrape|scrape-markdown|scrape-text|scrape-json|batch-scrape|map|crawl
   Browser:  gologin-web-access open|snapshot|click|type|screenshot|close|sessions|current
 
 Key model:
