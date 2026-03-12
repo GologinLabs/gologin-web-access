@@ -23,11 +23,11 @@ export async function runDoctor(options: { json?: boolean } = {}): Promise<void>
   });
 
   checks.push({
-    name: "Agent Browser CLI",
+    name: "Embedded browser runtime",
     status: agentCli ? "ok" : "error",
     detail: agentCli
       ? `${agentCli.source}${agentCli.version ? ` v${agentCli.version}` : ""} at ${agentCli.cwd}`
-      : "missing installed package, PATH command `gologin-agent-browser`, or sibling project `gologin-agent` build/source entrypoint",
+      : "missing embedded Cloud Browser runtime inside this gologin-web-access install",
   });
 
   if (!config.defaultProfileId) {

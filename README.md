@@ -199,24 +199,21 @@ gologin-web-access config show
 gologin-web-access doctor
 ```
 
-`doctor` now also reports which Agent Browser CLI backend it will use and whether that backend comes from the installed package or the local sibling project. When both exist, the local sibling project is preferred for development.
+`doctor` reports the embedded Cloud Browser runtime bundled inside this package and whether the local daemon is reachable.
 
 ## Install
 
 ```bash
-npm install -g gologin-agent-browser-cli gologin-web-access
+npm install -g gologin-web-access
 ```
 
 ### Install From GitHub
 
-If the npm packages are not published yet, install both CLIs from GitHub:
+If the npm package is not published yet, install directly from GitHub:
 
 ```bash
-npm install -g github:GologinLabs/agent-browser
 npm install -g github:GologinLabs/gologin-web-access
 ```
-
-`gologin-web-access` uses `gologin-agent-browser` from `PATH`, so the two-package install works both from npm and from GitHub.
 
 ## Quickstart
 
@@ -279,17 +276,12 @@ gologin-web-access jobs
 
 ## Product Boundaries
 
-Gologin Web Access is intentionally built from two layers:
+Gologin Web Access still has two runtime layers:
 
 - Web Unlocker for stateless read and extraction
 - Cloud Browser for stateful interaction
 
-In this package:
-
-- the read layer is embedded directly in the package
-- the browser layer is delegated to the published package `gologin-agent-browser-cli`
-
-That separation is intentional. Read commands stay simple and stateless. Browser commands stay stateful and session-backed.
+But both are now shipped inside the same package and the same repository. One install gives you the full read layer and the full browser/session layer.
 
 ## Development
 

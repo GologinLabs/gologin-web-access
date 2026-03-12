@@ -8,7 +8,7 @@
    `npm whoami`
 3. If this project gets a public repository, add `repository` and `bugs` fields to `package.json`.
 4. If publishing from GitHub Actions, add an `NPM_TOKEN` secret to the repository.
-5. Publish `gologin-agent-browser-cli` and `gologin-web-access` as separate packages. `gologin-web-access` shells out to `gologin-agent-browser` from `PATH`.
+5. This repository now contains both the Web Unlocker layer and the embedded Cloud Browser runtime.
 
 ## Local release checklist
 
@@ -35,17 +35,15 @@ The repository includes GitHub Actions workflows:
 Suggested flow:
 
 1. Push to the default branch and let CI pass.
-2. Publish `gologin-agent-browser-cli` from the `agent-browser` repo.
-3. Create a version tag such as `v0.1.0`.
-4. Push the tag.
-5. GitHub Actions publishes to npm using `NPM_TOKEN`.
-6. Repeat for `gologin-web-access`.
+2. Create a version tag such as `v0.3.0`.
+3. Push the tag.
+4. GitHub Actions publishes to npm using `NPM_TOKEN`.
 
 ## Notes
 
 - The published npm package name is `gologin-web-access`.
 - The installed command is `gologin-web-access`.
-- Browser automation requires the `gologin-agent-browser` command to be installed on `PATH`.
-- Recommended install is `npm install -g gologin-agent-browser-cli gologin-web-access`.
-- GitHub installs work with `npm install -g github:GologinLabs/agent-browser github:GologinLabs/gologin-web-access`.
+- Browser automation is embedded in this package.
+- Recommended install is `npm install -g gologin-web-access`.
+- GitHub installs work with `npm install -g github:GologinLabs/gologin-web-access`.
 - Web Unlocker support is embedded in this package and does not require a second npm package.

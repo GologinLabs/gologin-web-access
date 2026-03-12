@@ -1,6 +1,5 @@
 import { spawn } from "child_process";
 import { promises as fs } from "fs";
-import { createRequire } from "module";
 import path from "path";
 import { CliError, SilentExitError } from "./errors";
 import { ResolvedConfig } from "./types";
@@ -9,7 +8,7 @@ type AgentCliInvocation = {
   command: string;
   args: string[];
   cwd: string;
-  source: "installed-package" | "sibling-project" | "path-command";
+  source: "internal-bundled" | "internal-source";
   version?: string;
 };
 
@@ -57,75 +56,41 @@ export async function inspectAgentCli(): Promise<AgentCliInvocation | undefined>
 }
 
 async function resolveAgentCliInvocation(): Promise<AgentCliInvocation> {
-  const projectRoot = resolveSiblingProject("gologin-agent");
-  const distCli = path.join(projectRoot, "dist", "cli.js");
+  const projectRoot = resolveProjectRoot();
+  const distCli = path.join(projectRoot, "dist", "internal-agent", "cli.js");
 
   if (await exists(distCli)) {
     return {
       command: process.execPath,
       args: [distCli],
       cwd: projectRoot,
-      source: "sibling-project",
+      source: "internal-bundled",
       version: await readPackageVersion(projectRoot),
     };
   }
 
-  const installedPackageRoot = resolveInstalledAgentPackageRoot();
-  if (installedPackageRoot) {
-    const installedDistCli = path.join(installedPackageRoot, "dist", "cli.js");
-    if (await exists(installedDistCli)) {
-      return {
-        command: process.execPath,
-        args: [installedDistCli],
-        cwd: installedPackageRoot,
-        source: "installed-package",
-        version: await readPackageVersion(installedPackageRoot),
-      };
-    }
-  }
-
   const tsxCli = path.join(projectRoot, "node_modules", "tsx", "dist", "cli.mjs");
-  const srcCli = path.join(projectRoot, "src", "cli.ts");
+  const srcCli = path.join(projectRoot, "src", "internal-agent", "cli.ts");
 
   if ((await exists(tsxCli)) && (await exists(srcCli))) {
     return {
       command: process.execPath,
       args: [tsxCli, srcCli],
       cwd: projectRoot,
-      source: "sibling-project",
+      source: "internal-source",
       version: await readPackageVersion(projectRoot),
-    };
-  }
-
-  const pathCommand = await resolvePathCommand("gologin-agent-browser");
-  if (pathCommand) {
-    return {
-      command: pathCommand,
-      args: [],
-      cwd: process.cwd(),
-      source: "path-command",
     };
   }
 
   throw new CliError(
     "Gologin Agent CLI is not available.",
     1,
-    `Install \`gologin-agent-browser-cli\`, install \`github:GologinLabs/agent-browser\`, or provide sibling project at ${projectRoot}.`,
+    `Internal browser runtime is missing from this gologin-web-access install at ${projectRoot}. Reinstall the package and rebuild it.`,
   );
 }
 
-function resolveSiblingProject(name: string): string {
-  return path.resolve(__dirname, "..", "..", "..", name);
-}
-
-function resolveInstalledAgentPackageRoot(): string | undefined {
-  try {
-    const requireFromHere = createRequire(__filename);
-    const packageJsonPath = requireFromHere.resolve("gologin-agent-browser-cli/package.json");
-    return path.dirname(packageJsonPath);
-  } catch {
-    return undefined;
-  }
+function resolveProjectRoot(): string {
+  return path.resolve(__dirname, "..", "..");
 }
 
 function spawnAndWait(
@@ -226,30 +191,4 @@ async function readPackageVersion(packageRoot: string): Promise<string | undefin
   } catch {
     return undefined;
   }
-}
-
-async function resolvePathCommand(commandName: string): Promise<string | undefined> {
-  const rawPath = process.env.PATH;
-  if (!rawPath) {
-    return undefined;
-  }
-
-  const pathEntries = rawPath.split(path.delimiter).filter(Boolean);
-  const extensions =
-    process.platform === "win32"
-      ? (process.env.PATHEXT ?? ".EXE;.CMD;.BAT;.COM")
-          .split(";")
-          .filter(Boolean)
-      : [""];
-
-  for (const entry of pathEntries) {
-    for (const extension of extensions) {
-      const candidate = path.join(entry, `${commandName}${extension}`);
-      if (await exists(candidate)) {
-        return candidate;
-      }
-    }
-  }
-
-  return undefined;
 }

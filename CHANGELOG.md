@@ -2,8 +2,8 @@
 
 ## Unreleased
 
-- doctor now reports which Agent Browser CLI backend will be used, including source and version when available
-- GitHub installs now work with a separate `gologin-agent-browser` CLI available on `PATH`
+- browser automation is now embedded directly in `gologin-web-access`, so one repo and one install contains both Web Unlocker and Cloud Browser flows
+- doctor now reports the embedded browser runtime source and version
 
 ## 0.1.0 - 2026-03-10
 
