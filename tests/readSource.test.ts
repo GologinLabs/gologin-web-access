@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { assessReadableContent, normalizeReadSourceMode } from "../src/lib/readSource";
+import { assessReadableContent, extractReadableSegmentFromHtml, normalizeReadSourceMode } from "../src/lib/readSource";
 import { htmlToText } from "../src/lib/unlocker";
 
 test("normalizeReadSourceMode accepts auto unlocker and browser", () => {
@@ -74,4 +74,30 @@ test("assessReadableContent flags docs ui chrome markers", () => {
   const assessment = assessReadableContent(html, htmlToText(html));
   assert.equal(assessment.shouldFallback, true);
   assert.match(assessment.reason ?? "", /docs ui chrome/i);
+});
+
+test("extractReadableSegmentFromHtml prefers main article content over nav chrome", () => {
+  const html = `
+    <html>
+      <body>
+        <nav>
+          <a href="/a">A</a>
+          <a href="/b">B</a>
+          <a href="/c">C</a>
+        </nav>
+        <main>
+          <article>
+            <h1>Contexts</h1>
+            <p>Persist authentication and storage between browser sessions.</p>
+            <p>Use contexts when you want repeatable flows.</p>
+            <p>They can reduce login friction.</p>
+          </article>
+        </main>
+      </body>
+    </html>
+  `;
+
+  const result = extractReadableSegmentFromHtml(html);
+  assert.match(result.text, /Persist authentication and storage/i);
+  assert.doesNotMatch(result.text, /^A B C$/i);
 });

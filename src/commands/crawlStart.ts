@@ -16,6 +16,7 @@ export function buildCrawlStartCommand(): Command {
     .option("--exclude <patterns>", "Comma-separated URL patterns to exclude")
     .option("--ignore-query", "Normalize URLs without query parameters")
     .option("--sitemap <mode>", "include, only, or skip", "include")
+    .option("--only-main-content", "For html, markdown, or text output, isolate the most readable content block on each page")
     .action(
       async (
         url: string,
@@ -29,6 +30,7 @@ export function buildCrawlStartCommand(): Command {
           exclude?: string;
           ignoreQuery?: boolean;
           sitemap: string;
+          onlyMainContent?: boolean;
         },
       ) => {
         const config = await loadConfig();
@@ -63,6 +65,7 @@ function buildCrawlArgs(
     exclude?: string;
     ignoreQuery?: boolean;
     sitemap: string;
+    onlyMainContent?: boolean;
   },
 ): string[] {
   const args = ["crawl", url, "--format", options.format, "--limit", options.limit, "--max-depth", options.maxDepth, "--concurrency", options.concurrency, "--sitemap", options.sitemap];
@@ -77,6 +80,9 @@ function buildCrawlArgs(
   }
   if (options.ignoreQuery) {
     args.push("--ignore-query");
+  }
+  if (options.onlyMainContent) {
+    args.push("--only-main-content");
   }
 
   return args;

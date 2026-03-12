@@ -315,7 +315,7 @@ function meaningfulTextLength(value: string): number {
   return value.replace(/\s+/g, " ").trim().length;
 }
 
-function extractReadableSegmentFromHtml(html: string): { html: string; text: string; selector: string } {
+export function extractReadableSegmentFromHtml(html: string): { html: string; text: string; selector: string } {
   const $ = load(html);
   const candidates: Array<{ selector: string; element: ReturnType<typeof $> }> = [
     { selector: "#content-area", element: $("#content-area").first() },

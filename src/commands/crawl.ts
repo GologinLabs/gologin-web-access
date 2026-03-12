@@ -17,6 +17,7 @@ export function buildCrawlCommand(): Command {
     .option("--exclude <patterns>", "Comma-separated URL patterns to exclude")
     .option("--ignore-query", "Normalize URLs without query parameters")
     .option("--sitemap <mode>", "include, only, or skip", "include")
+    .option("--only-main-content", "For html, markdown, or text output, isolate the most readable content block on each page")
     .option("--strict", "Exit non-zero when any page fails during crawling")
     .action(
       async (
@@ -31,6 +32,7 @@ export function buildCrawlCommand(): Command {
           exclude?: string;
           ignoreQuery?: boolean;
           sitemap: string;
+          onlyMainContent?: boolean;
           strict?: boolean;
         },
       ) => {
@@ -46,6 +48,7 @@ export function buildCrawlCommand(): Command {
           excludePatterns: splitPatterns(options.exclude),
           ignoreQueryParameters: Boolean(options.ignoreQuery),
           sitemapMode: normalizeSitemapMode(options.sitemap),
+          onlyMainContent: Boolean(options.onlyMainContent),
         });
 
         printJson(result);

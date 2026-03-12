@@ -1,4 +1,5 @@
 import { ScrapeFormat } from "./types";
+import { extractReadableSegmentFromHtml } from "./readSource";
 import {
   htmlToMarkdown,
   htmlToStructuredData,
@@ -16,6 +17,7 @@ export interface CrawlOptions {
   excludePatterns: string[];
   ignoreQueryParameters: boolean;
   sitemapMode: "include" | "only" | "skip";
+  onlyMainContent?: boolean;
 }
 
 interface TraversedSuccessPage {
@@ -261,15 +263,17 @@ async function scrapePage(url: string, apiKey: string, scope: Scope, options: Cr
   const scraped = await scrapeRenderedHtml(url, apiKey);
   const data = htmlToStructuredData(scraped.content);
   const links = extractScopedLinks(url, data.links, scope, options);
+  const readable = options.onlyMainContent ? extractReadableSegmentFromHtml(scraped.content) : null;
+  const htmlOutput = readable ? readable.html : scraped.content;
 
   return {
     url,
     data,
     links,
     outputByFormat: {
-      html: scraped.content,
-      markdown: htmlToMarkdown(scraped.content),
-      text: htmlToText(scraped.content),
+      html: htmlOutput,
+      markdown: htmlToMarkdown(htmlOutput),
+      text: readable ? readable.text : htmlToText(scraped.content),
       json: data,
     },
   };

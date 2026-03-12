@@ -38,7 +38,7 @@ These commands use Gologin Web Unlocker:
 - `gologin-web-access batch-scrape <url...> [--format html|markdown|text|json] [--fallback none|browser] [--source auto|unlocker|browser] [--only-main-content] [--retry <n>] [--backoff-ms <ms>] [--summary]`
 - `gologin-web-access search <query> [--limit <n>] [--country <cc>] [--language <lang>] [--source auto|unlocker|browser]`
 - `gologin-web-access map <url> [--limit <n>] [--max-depth <n>] [--concurrency <n>] [--strict]`
-- `gologin-web-access crawl <url> [--format html|markdown|text|json] [--limit <n>] [--max-depth <n>] [--strict]`
+- `gologin-web-access crawl <url> [--format html|markdown|text|json] [--limit <n>] [--max-depth <n>] [--only-main-content] [--strict]`
 - `gologin-web-access crawl-start <url> ...`
 - `gologin-web-access crawl-status <jobId>`
 - `gologin-web-access crawl-result <jobId>`
@@ -173,6 +173,14 @@ export GOLOGIN_DEFAULT_PROFILE_ID="profile_123"
 export GOLOGIN_DAEMON_PORT="4590"
 ```
 
+If you do not want to `source ~/.zprofile` in every shell, run:
+
+```bash
+gologin-web-access config init
+```
+
+That writes `~/.gologin-web-access/config.json` once and the CLI will keep reading it on later runs.
+
 You can also write a minimal config file at `~/.gologin-web-access/config.json`:
 
 ```json
@@ -225,7 +233,7 @@ gologin-web-access batch-scrape https://docs.browserbase.com/features/contexts h
 gologin-web-access search "gologin antidetect browser" --limit 5
 gologin-web-access search "gologin antidetect browser" --limit 5 --source auto
 gologin-web-access map https://example.com --limit 50 --max-depth 2
-gologin-web-access crawl https://example.com --format markdown --limit 20 --max-depth 2
+gologin-web-access crawl https://docs.browserbase.com --format text --limit 20 --max-depth 2 --only-main-content
 gologin-web-access crawl-start https://example.com --limit 20 --max-depth 2
 gologin-web-access extract https://example.com --schema ./schema.json
 gologin-web-access change-track https://example.com --format markdown
@@ -272,6 +280,7 @@ gologin-web-access snapshot -i
 - `scrape-json --fallback browser` is available for JS-heavy pages where stateless extraction returns weak heading data.
 - `scrape`, `scrape-markdown`, `scrape-text`, `scrape-json`, and `batch-scrape` accept `--retry`, `--backoff-ms`, and `--timeout-ms`.
 - `batch-scrape --only-main-content` lets markdown, text, and html batch runs use the same readable-content isolation path as `read`.
+- `crawl --only-main-content` uses the same readable-fragment extraction strategy for html, markdown, and text crawl output, but stays on the stateless unlocker path.
 - `batch-scrape --summary` prints a one-line success/failure summary to `stderr` after the JSON payload.
 - `batch-scrape --format json` now returns the same structured scrape envelope as `scrape-json`, including `renderSource`, `fallbackAttempted`, `fallbackUsed`, and `request.attemptCount/retryCount/attempts`.
 - `search` now returns `requestedLimit`, `returnedCount`, `warnings`, `cacheTtlMs`, and per-result `position`.
