@@ -1,3 +1,5 @@
+import { promises as fs } from "fs";
+import path from "path";
 import { Command } from "commander";
 import { loadConfig, requireWebUnlockerKey } from "../config";
 import { buildTrackingKey, compareAndPersistSnapshot, normalizeTrackingFormat, scrapeForTracking } from "../lib/changeTracking";
@@ -33,6 +35,7 @@ export function buildBatchChangeTrackCommand(): Command {
       .argument("<urls...>", "One or more URLs")
       .option("--format <format>", "html, markdown, text, or json", "markdown")
       .option("--concurrency <count>", "Number of concurrent requests", "4")
+      .option("--output <path>", "Write the full batch result JSON to a file")
       .option("--summary", "Print one-line status counts to stderr after the JSON output")
       .action(
         async (
@@ -40,6 +43,7 @@ export function buildBatchChangeTrackCommand(): Command {
           options: {
             format: string;
             concurrency?: string;
+            output?: string;
             summary?: boolean;
             retry?: string;
             backoffMs?: string;
@@ -80,7 +84,14 @@ export function buildBatchChangeTrackCommand(): Command {
             }
           });
 
-          printJson(results);
+          if (options.output) {
+            const outputPath = path.resolve(options.output);
+            await fs.mkdir(path.dirname(outputPath), { recursive: true });
+            await fs.writeFile(outputPath, `${JSON.stringify(results, null, 2)}\n`, "utf8");
+            process.stdout.write(`${outputPath}\n`);
+          } else {
+            printJson(results);
+          }
           if (options.summary) {
             process.stderr.write(formatBatchChangeTrackSummary(results) + "\n");
           }

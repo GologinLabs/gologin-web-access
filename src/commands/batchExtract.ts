@@ -18,6 +18,7 @@ export function buildBatchExtractCommand(): Command {
         .requiredOption("--schema <path>", "Path to a JSON extraction schema")
         .option("--source <source>", "Read source: auto, unlocker, or browser", "auto")
         .option("--concurrency <count>", "Number of concurrent requests", "4")
+        .option("--output <path>", "Write the full batch result JSON to a file")
         .option("--summary", "Print one-line summary stats to stderr after the JSON output")
         .action(
           async (
@@ -26,6 +27,7 @@ export function buildBatchExtractCommand(): Command {
               schema: string;
               source?: string;
               concurrency?: string;
+              output?: string;
               summary?: boolean;
               profile?: string;
               retry?: string;
@@ -61,7 +63,14 @@ export function buildBatchExtractCommand(): Command {
               }
             });
 
-            printJson(results);
+            if (options.output) {
+              const outputPath = path.resolve(options.output);
+              await fs.mkdir(path.dirname(outputPath), { recursive: true });
+              await fs.writeFile(outputPath, `${JSON.stringify(results, null, 2)}\n`, "utf8");
+              process.stdout.write(`${outputPath}\n`);
+            } else {
+              printJson(results);
+            }
             if (options.summary) {
               process.stderr.write(formatBatchExtractSummary(results) + "\n");
             }
