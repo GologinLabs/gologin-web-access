@@ -1,5 +1,5 @@
 import http from "node:http";
-import { spawn } from "node:child_process";
+import { spawn, execFile } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -16,6 +16,16 @@ import { isDaemonErrorResponse, makeTransportLabel } from "./utils";
 
 function projectRootFromCli(): string {
   return path.resolve(__dirname, "..", "..", "..");
+}
+
+function readPackageVersion(projectRoot: string): string | undefined {
+  try {
+    const raw = fs.readFileSync(path.join(projectRoot, "package.json"), "utf8");
+    const parsed = JSON.parse(raw) as { version?: unknown };
+    return typeof parsed.version === "string" ? parsed.version : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function buildDaemonSpawnCommand(projectRoot: string): { command: string; args: string[] } {
@@ -144,12 +154,101 @@ export async function probeTransport(transport: ResolvedTransport): Promise<bool
   }
 }
 
+async function readHealth(transport: ResolvedTransport): Promise<HealthResponse | undefined> {
+  try {
+    return (await requestOverHttp(transport, "GET", "/health")) as HealthResponse;
+  } catch {
+    return undefined;
+  }
+}
+
+export function daemonMatchesExpected(
+  health: HealthResponse,
+  expectedProjectRoot: string,
+  expectedVersion?: string,
+  processCommand?: string
+): boolean {
+  if (health.projectRoot) {
+    if (health.projectRoot !== expectedProjectRoot) {
+      return false;
+    }
+
+    return !expectedVersion || !health.version || health.version === expectedVersion;
+  }
+
+  if (!processCommand) {
+    return false;
+  }
+
+  return processCommand.includes(expectedProjectRoot);
+}
+
+export function isLikelyManagedDaemon(processCommand?: string): boolean {
+  if (!processCommand) {
+    return false;
+  }
+
+  return processCommand.includes("gologin-web-access") && processCommand.includes("internal-agent/daemon/server");
+}
+
+async function readProcessCommand(pid: number): Promise<string | undefined> {
+  return new Promise((resolve) => {
+    execFile("ps", ["-p", String(pid), "-o", "command="], (error, stdout) => {
+      if (error) {
+        resolve(undefined);
+        return;
+      }
+
+      const value = stdout.trim();
+      resolve(value.length > 0 ? value : undefined);
+    });
+  });
+}
+
+async function waitForTransportToStop(transport: ResolvedTransport, timeoutMs: number): Promise<boolean> {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    if (!(await probeTransport(transport))) {
+      return true;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+
+  return false;
+}
+
+async function terminateDaemon(health: HealthResponse): Promise<void> {
+  try {
+    process.kill(health.pid, "SIGTERM");
+  } catch {
+    return;
+  }
+}
+
 export async function inspectDaemon(config: AgentConfig): Promise<DoctorResponse> {
+  const currentProjectRoot = projectRootFromCli();
+  const currentVersion = readPackageVersion(currentProjectRoot);
   const transports = await Promise.all(
-    buildDaemonTransports(config).map(async (transport) => ({
-      label: makeTransportLabel(transport),
-      reachable: await probeTransport(transport)
-    }))
+    buildDaemonTransports(config).map(async (transport) => {
+      const health = await readHealth(transport);
+      let processCommand: string | undefined;
+      if (health?.pid) {
+        processCommand = await readProcessCommand(health.pid);
+      }
+
+      return {
+        label: makeTransportLabel(transport),
+        reachable: Boolean(health),
+        pid: health?.pid,
+        projectRoot: health?.projectRoot,
+        version: health?.version,
+        startedAt: health?.startedAt,
+        matchesCurrentBuild: health
+          ? daemonMatchesExpected(health, currentProjectRoot, currentVersion, processCommand)
+          : false
+      };
+    })
   );
 
   return {
@@ -159,6 +258,8 @@ export async function inspectDaemon(config: AgentConfig): Promise<DoctorResponse
     connectBase: config.connectBase,
     daemonLogPath: config.logPath,
     configPath: config.configPath,
+    currentProjectRoot,
+    currentVersion,
     transports
   };
 }
@@ -180,18 +281,42 @@ async function waitForDaemon(transports: ResolvedTransport[], timeoutMs: number)
 
 export async function ensureDaemon(config: ReturnType<typeof loadConfig>): Promise<ResolvedTransport> {
   const transports = buildDaemonTransports(config);
+  const currentProjectRoot = projectRootFromCli();
+  const currentVersion = readPackageVersion(currentProjectRoot);
 
   for (const transport of transports) {
-    if (await probeTransport(transport)) {
+    const health = await readHealth(transport);
+    if (!health) {
+      continue;
+    }
+
+    const processCommand = await readProcessCommand(health.pid);
+    if (daemonMatchesExpected(health, currentProjectRoot, currentVersion, processCommand)) {
       return transport;
+    }
+
+    if (isLikelyManagedDaemon(processCommand)) {
+      await terminateDaemon(health);
+      const stopped = await waitForTransportToStop(transport, 4_000);
+      if (!stopped) {
+        throw new AppError(
+          "DAEMON_UNREACHABLE",
+          `Conflicting daemon pid=${health.pid} did not stop in time`,
+          503,
+          {
+            pid: health.pid,
+            transport: makeTransportLabel(transport),
+            processCommand
+          }
+        );
+      }
     }
   }
 
-  const projectRoot = projectRootFromCli();
-  const command = buildDaemonSpawnCommand(projectRoot);
+  const command = buildDaemonSpawnCommand(currentProjectRoot);
   let spawnError: Error | undefined;
   const child = spawn(command.command, command.args, {
-    cwd: projectRoot,
+    cwd: currentProjectRoot,
     detached: true,
     stdio: "ignore",
     env: process.env

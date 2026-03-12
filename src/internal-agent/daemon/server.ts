@@ -1,5 +1,6 @@
 import http from "node:http";
 import fs from "node:fs";
+import path from "node:path";
 
 import { loadConfig, ensureStateDir } from "../lib/config";
 import { AppError, serializeError } from "../lib/errors";
@@ -41,6 +42,9 @@ ensureStateDir(config);
 
 const sessionManager = new SessionManager(config);
 const activeServers: http.Server[] = [];
+const daemonProjectRoot = path.resolve(__dirname, "..", "..", "..");
+const daemonVersion = readPackageVersion(daemonProjectRoot);
+const daemonStartedAt = new Date().toISOString();
 
 function logInfo(message: string): void {
   appendLog(config.logPath, `[INFO] ${message}`);
@@ -66,7 +70,10 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
       const payload: HealthResponse = {
         ok: true,
         pid: process.pid,
-        transports: process.platform === "win32" ? ["http"] : ["socket", "http"]
+        transports: process.platform === "win32" ? ["http"] : ["socket", "http"],
+        projectRoot: daemonProjectRoot,
+        version: daemonVersion,
+        startedAt: daemonStartedAt
       };
       writeJsonResponse(response, 200, payload);
       return;
@@ -349,6 +356,16 @@ function createServer(): http.Server {
       writeJsonResponse(response, payload.status, payload);
     });
   });
+}
+
+function readPackageVersion(projectRoot: string): string | undefined {
+  try {
+    const raw = fs.readFileSync(path.join(projectRoot, "package.json"), "utf8");
+    const parsed = JSON.parse(raw) as { version?: unknown };
+    return typeof parsed.version === "string" ? parsed.version : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 async function startServers(): Promise<void> {

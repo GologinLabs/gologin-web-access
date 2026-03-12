@@ -289,6 +289,11 @@ export interface TabCloseResponse extends ActionResponse {
 export interface DoctorTransportStatus {
   label: string;
   reachable: boolean;
+  pid?: number;
+  projectRoot?: string;
+  version?: string;
+  startedAt?: string;
+  matchesCurrentBuild?: boolean;
 }
 
 export interface DoctorResponse {
@@ -298,6 +303,8 @@ export interface DoctorResponse {
   connectBase: string;
   daemonLogPath: string;
   configPath: string;
+  currentProjectRoot?: string;
+  currentVersion?: string;
   transports: DoctorTransportStatus[];
 }
 
@@ -445,6 +452,9 @@ export interface HealthResponse {
   ok: true;
   pid: number;
   transports: TransportKind[];
+  projectRoot?: string;
+  version?: string;
+  startedAt?: string;
 }
 
 export interface DaemonErrorPayload {

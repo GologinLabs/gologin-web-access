@@ -15,9 +15,31 @@ function writeDoctorReport(context: CommandContext, report: DoctorResponse): voi
   context.stdout.write(`connectBase=${report.connectBase}\n`);
   context.stdout.write(`configPath=${report.configPath}\n`);
   context.stdout.write(`daemonLogPath=${report.daemonLogPath}\n`);
+  if (report.currentProjectRoot) {
+    context.stdout.write(`currentProjectRoot=${report.currentProjectRoot}\n`);
+  }
+  if (report.currentVersion) {
+    context.stdout.write(`currentVersion=${report.currentVersion}\n`);
+  }
 
   for (const transport of report.transports) {
-    context.stdout.write(`transport=${transport.label} reachable=${transport.reachable}\n`);
+    const parts = [`transport=${transport.label}`, `reachable=${transport.reachable}`];
+    if (transport.pid !== undefined) {
+      parts.push(`pid=${transport.pid}`);
+    }
+    if (transport.projectRoot) {
+      parts.push(`projectRoot=${transport.projectRoot}`);
+    }
+    if (transport.version) {
+      parts.push(`version=${transport.version}`);
+    }
+    if (transport.startedAt) {
+      parts.push(`startedAt=${transport.startedAt}`);
+    }
+    if (transport.matchesCurrentBuild !== undefined) {
+      parts.push(`matchesCurrentBuild=${transport.matchesCurrentBuild}`);
+    }
+    context.stdout.write(`${parts.join(" ")}\n`);
   }
 }
 
