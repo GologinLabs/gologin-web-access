@@ -207,14 +207,6 @@ gologin-web-access doctor
 npm install -g gologin-web-access
 ```
 
-### Install From GitHub
-
-If the npm package is not published yet, install directly from GitHub:
-
-```bash
-npm install -g github:GologinLabs/gologin-web-access
-```
-
 ## Quickstart
 
 ### Read A Page

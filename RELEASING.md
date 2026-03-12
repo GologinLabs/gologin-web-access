@@ -45,5 +45,4 @@ Suggested flow:
 - The installed command is `gologin-web-access`.
 - Browser automation is embedded in this package.
 - Recommended install is `npm install -g gologin-web-access`.
-- GitHub installs work with `npm install -g github:GologinLabs/gologin-web-access`.
 - Web Unlocker support is embedded in this package and does not require a second npm package.
