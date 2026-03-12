@@ -34,6 +34,7 @@ import { buildParseDocumentCommand } from "./commands/parseDocument";
 import { buildPdfCommand } from "./commands/pdf";
 import { buildPressCommand } from "./commands/press";
 import { buildReloadCommand } from "./commands/reload";
+import { buildReadCommand } from "./commands/read";
 import { buildRunCommand } from "./commands/run";
 import { buildScrapeCommand } from "./commands/scrape";
 import { buildScrapeJsonCommand } from "./commands/scrapeJson";
@@ -76,6 +77,7 @@ async function main(): Promise<void> {
     .showSuggestionAfterError();
 
   program.addCommand(buildScrapeCommand());
+  program.addCommand(buildReadCommand());
   program.addCommand(buildScrapeMarkdownCommand());
   program.addCommand(buildScrapeTextCommand());
   program.addCommand(buildScrapeJsonCommand());
@@ -158,7 +160,7 @@ async function main(): Promise<void> {
     "after",
     `
 Command groups:
-  Scraping: gologin-web-access scrape|scrape-markdown|scrape-text|scrape-json|batch-scrape|search|map|crawl|crawl-start|crawl-status|crawl-result|crawl-errors|extract|change-track|parse-document
+  Scraping: gologin-web-access scrape|read|scrape-markdown|scrape-text|scrape-json|batch-scrape|search|map|crawl|crawl-start|crawl-status|crawl-result|crawl-errors|extract|change-track|parse-document
   Browser:  gologin-web-access open|search-browser|scrape-screenshot|tabs|tabopen|tabfocus|tabclose|snapshot|click|dblclick|focus|type|fill|hover|select|check|uncheck|press|scroll|scrollintoview|wait|get|back|forward|reload|find|cookies|cookies-import|cookies-clear|storage-export|storage-import|storage-clear|eval|upload|pdf|screenshot|close|sessions|current
   Agent:    gologin-web-access run|batch|jobs|job
 

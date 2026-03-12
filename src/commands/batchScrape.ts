@@ -1,70 +1,84 @@
 import { Command } from "commander";
 import { loadConfig, requireWebUnlockerKey } from "../config";
 import { printJson } from "../lib/output";
+import { readHtmlContent, readMarkdownContent, readTextContent, normalizeReadSourceMode } from "../lib/readSource";
 import { normalizeStructuredFallbackMode, scrapeStructuredJson } from "../lib/structuredScrape";
 import { ScrapeFormat } from "../lib/types";
 import { ScrapeRequestOptions, scrapeMarkdown, scrapeRenderedHtml, scrapeText } from "../lib/unlocker";
-import { addUnlockerRequestOptions, normalizeUnlockerRequestOptions } from "./shared";
+import { addProfileOption, addUnlockerRequestOptions, normalizeUnlockerRequestOptions } from "./shared";
 
 export function buildBatchScrapeCommand(): Command {
-  return addUnlockerRequestOptions(
-    new Command("batch-scrape")
-    .description("Fetch multiple pages through Web Unlocker and print a JSON array of results.")
-    .argument("<urls...>", "One or more URLs")
-    .option("--format <format>", "html, markdown, text, or json", "html")
-    .option("--concurrency <count>", "Number of concurrent requests", "4")
-    .option("--fallback <mode>", "Structured scrape fallback: none or browser", "none")
-    .option("--summary", "Print one-line summary stats to stderr after the JSON output")
-    .action(
-      async (
-        urls: string[],
-        options: {
-          format: ScrapeFormat;
-          concurrency: string;
-          fallback?: string;
-          retry?: string;
-          backoffMs?: string;
-          timeoutMs?: string;
-          summary?: boolean;
-        },
-      ) => {
-      const config = await loadConfig();
-      const apiKey = requireWebUnlockerKey(config);
-      const format = normalizeFormat(options.format);
-      const concurrency = Math.max(1, Number(options.concurrency) || 4);
-      const requestOptions = normalizeUnlockerRequestOptions(options);
-      const fallback = normalizeStructuredFallbackMode(options.fallback);
-      const results = await mapWithConcurrency(urls, concurrency, async (url) => {
-        try {
-          const output = await formatOutput(url, config, apiKey, format, requestOptions, fallback);
-          return {
-            url,
-            ok: true,
-            format,
-            output,
-          };
-        } catch (error) {
-          const request = extractRequestMeta(error);
-          return {
-            url,
-            ok: false,
-            format,
-            error: error instanceof Error ? error.message : "Unknown error",
-            status: extractStatusCode(error),
-            request,
-          };
-        }
-      });
+  return addProfileOption(
+    addUnlockerRequestOptions(
+      new Command("batch-scrape")
+        .description("Fetch multiple pages through Web Unlocker and print a JSON array of results.")
+        .argument("<urls...>", "One or more URLs")
+        .option("--format <format>", "html, markdown, text, or json", "html")
+        .option("--concurrency <count>", "Number of concurrent requests", "4")
+        .option("--fallback <mode>", "Structured scrape fallback: none or browser", "none")
+        .option("--source <source>", "Read source for --only-main-content mode: auto, unlocker, or browser", "auto")
+        .option("--only-main-content", "For html, markdown, or text formats, isolate the most readable content block per page")
+        .option("--summary", "Print one-line summary stats to stderr after the JSON output")
+        .action(
+          async (
+            urls: string[],
+            options: {
+              format: ScrapeFormat;
+              concurrency: string;
+              fallback?: string;
+              source?: string;
+              onlyMainContent?: boolean;
+              profile?: string;
+              retry?: string;
+              backoffMs?: string;
+              timeoutMs?: string;
+              summary?: boolean;
+            },
+          ) => {
+            const config = await loadConfig();
+            const format = normalizeFormat(options.format);
+            const source = normalizeReadSourceMode(options.source, "auto");
+            const usingBrowserOnlyMainContent = Boolean(options.onlyMainContent) && format !== "json" && source === "browser";
+            const apiKey = usingBrowserOnlyMainContent ? "" : requireWebUnlockerKey(config);
+            const concurrency = Math.max(1, Number(options.concurrency) || 4);
+            const requestOptions = normalizeUnlockerRequestOptions(options);
+            const fallback = normalizeStructuredFallbackMode(options.fallback);
+            const results = await mapWithConcurrency(urls, concurrency, async (url) => {
+              try {
+                const output = await formatOutput(url, config, apiKey, format, requestOptions, fallback, {
+                  source,
+                  onlyMainContent: Boolean(options.onlyMainContent),
+                  profile: options.profile,
+                });
+                return {
+                  url,
+                  ok: true,
+                  format,
+                  output,
+                };
+              } catch (error) {
+                const request = extractRequestMeta(error);
+                return {
+                  url,
+                  ok: false,
+                  format,
+                  error: error instanceof Error ? error.message : "Unknown error",
+                  status: extractStatusCode(error),
+                  request,
+                };
+              }
+            });
 
-      printJson(results);
-      if (options.summary) {
-        process.stderr.write(formatBatchSummary(results) + "\n");
-      }
+            printJson(results);
+            if (options.summary) {
+              process.stderr.write(formatBatchSummary(results) + "\n");
+            }
 
-      if (results.some((result) => !result.ok)) {
-        process.exitCode = 1;
-      }
-    }),
+            if (results.some((result) => !result.ok)) {
+              process.exitCode = 1;
+            }
+          }),
+    ),
   );
 }
 
@@ -83,7 +97,31 @@ async function formatOutput(
   format: ScrapeFormat,
   requestOptions: ScrapeRequestOptions,
   fallback: "none" | "browser",
+  options: {
+    source: "auto" | "unlocker" | "browser";
+    onlyMainContent: boolean;
+    profile?: string;
+  },
 ): Promise<unknown> {
+  if (options.onlyMainContent && format !== "json") {
+    const readOptions = {
+      source: options.source,
+      profile: options.profile,
+      request: requestOptions,
+    };
+
+    switch (format) {
+      case "html":
+        return (await readHtmlContent(url, config, apiKey, readOptions)).content;
+      case "markdown":
+        return (await readMarkdownContent(url, config, apiKey, readOptions)).content;
+      case "text":
+        return (await readTextContent(url, config, apiKey, readOptions)).content;
+      default:
+        break;
+    }
+  }
+
   switch (format) {
     case "html":
       return (await scrapeRenderedHtml(url, apiKey, requestOptions)).content;

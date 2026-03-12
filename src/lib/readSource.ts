@@ -58,6 +58,22 @@ export async function readMarkdownContent(
   });
 }
 
+export async function readHtmlContent(
+  url: string,
+  config: ResolvedConfig,
+  apiKey: string,
+  options: {
+    source?: ReadSourceMode;
+    request?: ScrapeRequestOptions;
+    profile?: string;
+  } = {},
+): Promise<ReadContentEnvelope> {
+  return readReadableContent(url, config, apiKey, {
+    ...options,
+    format: "html",
+  });
+}
+
 export async function readTextContent(
   url: string,
   config: ResolvedConfig,
@@ -204,7 +220,7 @@ async function readReadableContent(
   config: ResolvedConfig,
   apiKey: string,
   options: {
-    format: "markdown" | "text";
+    format: "html" | "markdown" | "text";
     source?: ReadSourceMode;
     request?: ScrapeRequestOptions;
     profile?: string;
@@ -287,7 +303,11 @@ async function readReadableContent(
   };
 }
 
-function formatReadableContent(format: "markdown" | "text", html: string, text: string): string {
+function formatReadableContent(format: "html" | "markdown" | "text", html: string, text: string): string {
+  if (format === "html") {
+    return html;
+  }
+
   return format === "markdown" ? htmlToMarkdown(html) : text.trim();
 }
 

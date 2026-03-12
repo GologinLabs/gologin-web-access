@@ -31,10 +31,11 @@ The point of the unified CLI is that both modes live in one product with one com
 These commands use Gologin Web Unlocker:
 
 - `gologin-web-access scrape <url>`
+- `gologin-web-access read <url> [--format text|markdown|html] [--source auto|unlocker|browser]`
 - `gologin-web-access scrape-markdown <url> [--source auto|unlocker|browser]`
 - `gologin-web-access scrape-text <url> [--source auto|unlocker|browser]`
 - `gologin-web-access scrape-json <url> [--fallback none|browser]`
-- `gologin-web-access batch-scrape <url...> [--format html|markdown|text|json] [--fallback none|browser] [--retry <n>] [--backoff-ms <ms>] [--summary]`
+- `gologin-web-access batch-scrape <url...> [--format html|markdown|text|json] [--fallback none|browser] [--source auto|unlocker|browser] [--only-main-content] [--retry <n>] [--backoff-ms <ms>] [--summary]`
 - `gologin-web-access search <query> [--limit <n>] [--country <cc>] [--language <lang>] [--source auto|unlocker|browser]`
 - `gologin-web-access map <url> [--limit <n>] [--max-depth <n>] [--concurrency <n>] [--strict]`
 - `gologin-web-access crawl <url> [--format html|markdown|text|json] [--limit <n>] [--max-depth <n>] [--strict]`
@@ -216,10 +217,11 @@ npm install -g gologin-web-access
 export GOLOGIN_WEB_UNLOCKER_API_KEY="wu_..."
 
 gologin-web-access scrape https://example.com
+gologin-web-access read https://docs.browserbase.com/features/stealth-mode
 gologin-web-access scrape-markdown https://example.com/docs
 gologin-web-access scrape-text https://docs.browserbase.com/features/stealth-mode
 gologin-web-access scrape-json https://example.com --fallback browser
-gologin-web-access batch-scrape https://example.com https://example.org --format json --retry 3 --backoff-ms 2000 --summary
+gologin-web-access batch-scrape https://docs.browserbase.com/features/contexts https://docs.browserbase.com/features/proxies --format text --only-main-content --summary
 gologin-web-access search "gologin antidetect browser" --limit 5
 gologin-web-access search "gologin antidetect browser" --limit 5 --source auto
 gologin-web-access map https://example.com --limit 50 --max-depth 2
@@ -263,11 +265,13 @@ gologin-web-access snapshot -i
 ## Structured Output And Retry Controls
 
 - `scrape-markdown` and `scrape-text` now default to `--source auto`: they start with Unlocker, isolate the most readable content block, and can auto-retry with Cloud Browser when the output still looks like JS-rendered docs chrome.
+- `read` is the shortest path for "look at this docs page" work: it targets the most readable content block and defaults to `--format text --source auto`.
 - `scrape-markdown` and `scrape-text` also accept `--source unlocker` and `--source browser` when you want to force one path.
 - `extract` now accepts `--source auto|unlocker|browser` and returns `renderSource`, fallback flags, and request metadata with the extracted JSON.
 - `scrape-json` now returns both a flat `headings` array and `headingsByLevel` buckets for `h1` through `h6`.
 - `scrape-json --fallback browser` is available for JS-heavy pages where stateless extraction returns weak heading data.
 - `scrape`, `scrape-markdown`, `scrape-text`, `scrape-json`, and `batch-scrape` accept `--retry`, `--backoff-ms`, and `--timeout-ms`.
+- `batch-scrape --only-main-content` lets markdown, text, and html batch runs use the same readable-content isolation path as `read`.
 - `batch-scrape --summary` prints a one-line success/failure summary to `stderr` after the JSON payload.
 - `batch-scrape --format json` now returns the same structured scrape envelope as `scrape-json`, including `renderSource`, `fallbackAttempted`, `fallbackUsed`, and `request.attemptCount/retryCount/attempts`.
 - `search` now returns `requestedLimit`, `returnedCount`, `warnings`, `cacheTtlMs`, and per-result `position`.
