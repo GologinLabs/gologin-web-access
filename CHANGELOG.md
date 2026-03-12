@@ -3,7 +3,7 @@
 ## Unreleased
 
 - doctor now reports which Agent Browser CLI backend will be used, including source and version when available
-- package dependency now targets `gologin-agent-browser-cli@^0.1.4`
+- GitHub installs now work with a separate `gologin-agent-browser` CLI available on `PATH`
 
 ## 0.1.0 - 2026-03-10
 

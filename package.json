@@ -1,6 +1,6 @@
 {
   "name": "gologin-web-access",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Unified web access CLI for developers and AI agents to read and interact with the web using Gologin Web Unlocker and Cloud Browser.",
   "main": "dist/cli.js",
   "bin": {
