@@ -1,6 +1,6 @@
 import { loadConfig } from "./config";
 import { getProfile } from "./lib/cloudApi";
-import { agentCliAvailable, isDaemonReachable } from "./lib/agentCli";
+import { inspectAgentCli, isDaemonReachable } from "./lib/agentCli";
 import { formatDoctorChecks, printJson, printText } from "./lib/output";
 import { DoctorCheck } from "./lib/types";
 
@@ -8,7 +8,7 @@ export async function runDoctor(options: { json?: boolean } = {}): Promise<void>
   const config = await loadConfig();
   const checks: DoctorCheck[] = [];
   const daemonReachable = await isDaemonReachable(config.daemonPort);
-  const agentAvailable = await agentCliAvailable();
+  const agentCli = await inspectAgentCli();
 
   checks.push({
     name: "Web Unlocker API key",
@@ -24,8 +24,10 @@ export async function runDoctor(options: { json?: boolean } = {}): Promise<void>
 
   checks.push({
     name: "Agent Browser CLI",
-    status: agentAvailable ? "ok" : "error",
-    detail: agentAvailable ? "available" : "missing sibling project `gologin-agent` build or source entrypoint",
+    status: agentCli ? "ok" : "error",
+    detail: agentCli
+      ? `${agentCli.source}${agentCli.version ? ` v${agentCli.version}` : ""} at ${agentCli.cwd}`
+      : "missing installed package, PATH command `gologin-agent-browser`, or sibling project `gologin-agent` build/source entrypoint",
   });
 
   if (!config.defaultProfileId) {
@@ -69,6 +71,7 @@ export async function runDoctor(options: { json?: boolean } = {}): Promise<void>
   if (options.json) {
     printJson({
       configPath: config.configPath,
+      agentCli,
       checks,
     });
     return;

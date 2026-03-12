@@ -38,6 +38,17 @@ These commands use Gologin Web Unlocker:
 - `gologin-web-access search <query> [--limit <n>] [--country <cc>] [--language <lang>]`
 - `gologin-web-access map <url> [--limit <n>] [--max-depth <n>] [--concurrency <n>]`
 - `gologin-web-access crawl <url> [--format html|markdown|text|json] [--limit <n>] [--max-depth <n>]`
+- `gologin-web-access crawl-start <url> ...`
+- `gologin-web-access crawl-status <jobId>`
+- `gologin-web-access crawl-result <jobId>`
+- `gologin-web-access crawl-errors <jobId>`
+- `gologin-web-access extract <url> --schema <schema.json>`
+- `gologin-web-access change-track <url> [--format html|markdown|text|json]`
+- `gologin-web-access parse-document <url-or-path>`
+- `gologin-web-access run <runbook.json>`
+- `gologin-web-access batch <runbook.json> --targets <targets.json>`
+- `gologin-web-access jobs`
+- `gologin-web-access job <jobId>`
 
 Use these when you want stateless page retrieval or extracted content.
 
@@ -47,6 +58,11 @@ These commands use Gologin Cloud Browser through the local daemon-backed agent l
 
 - `gologin-web-access open <url> [--profile <id>]`
 - `gologin-web-access search-browser <query> [--profile <id>]`
+- `gologin-web-access scrape-screenshot <url> [path] [--profile <id>]`
+- `gologin-web-access tabs`
+- `gologin-web-access tabopen [url]`
+- `gologin-web-access tabfocus <index>`
+- `gologin-web-access tabclose [index]`
 - `gologin-web-access snapshot`
 - `gologin-web-access click <ref>`
 - `gologin-web-access dblclick <ref>`
@@ -62,7 +78,17 @@ These commands use Gologin Cloud Browser through the local daemon-backed agent l
 - `gologin-web-access scrollintoview <ref>`
 - `gologin-web-access wait <target|ms>`
 - `gologin-web-access get <kind> [target]`
+- `gologin-web-access back`
+- `gologin-web-access forward`
+- `gologin-web-access reload`
 - `gologin-web-access find ...`
+- `gologin-web-access cookies [--output <path>] [--json]`
+- `gologin-web-access cookies-import <cookies.json>`
+- `gologin-web-access cookies-clear`
+- `gologin-web-access storage-export [path] [--scope <local|session|both>]`
+- `gologin-web-access storage-import <storage.json> [--scope <local|session|both>] [--clear]`
+- `gologin-web-access storage-clear [--scope <local|session|both>]`
+- `gologin-web-access eval <expression>`
 - `gologin-web-access upload <ref> <file...>`
 - `gologin-web-access pdf <path>`
 - `gologin-web-access screenshot <path>`
@@ -78,8 +104,13 @@ Use these when you need state, interaction, or multi-step browser flows.
 - Use `search` when you need web discovery or SERP results before deciding what to scrape.
 - Use `map` when you need internal link discovery or a site inventory.
 - Use `crawl` when you need multi-page read-only extraction across a site.
+- Use `crawl-start` plus `crawl-status` and `crawl-result` when the crawl should run detached.
+- Use `extract` when you want deterministic structured output from CSS selectors rather than generic page summaries.
+- Use `change-track` when you want local change detection against the last stored snapshot of a page.
+- Use `parse-document` when the source is a PDF, DOCX, XLSX, HTML, or local document path instead of a normal HTML page.
 - Use browser commands when you need clicks, forms, navigation, screenshots, sessions, or logged-in/profile-backed flows.
 - Use browser commands when you need ref-based interaction, uploads, PDFs, semantic find flows, keyboard control, or a browser-visible search journey.
+- Use `run` and `batch` when you want reusable workflows or multi-target execution on top of the CLI surface.
 - Use `scrape` when stateless speed matters more than interaction.
 - Use browser commands when the site requires state, continuity, or real browser behavior.
 
@@ -173,8 +204,19 @@ gologin-web-access doctor
 ## Install
 
 ```bash
-npm install -g gologin-web-access
+npm install -g gologin-agent-browser-cli gologin-web-access
 ```
+
+### Install From GitHub
+
+If the npm packages are not published yet, install both CLIs from GitHub:
+
+```bash
+npm install -g github:GologinLabs/agent-browser
+npm install -g github:GologinLabs/gologin-web-access
+```
+
+`gologin-web-access` uses `gologin-agent-browser` from `PATH`, so the two-package install works both from npm and from GitHub.
 
 ## Quickstart
 
@@ -189,6 +231,10 @@ gologin-web-access batch-scrape https://example.com https://example.org --format
 gologin-web-access search "gologin antidetect browser" --limit 5
 gologin-web-access map https://example.com --limit 50 --max-depth 2
 gologin-web-access crawl https://example.com --format markdown --limit 20 --max-depth 2
+gologin-web-access crawl-start https://example.com --limit 20 --max-depth 2
+gologin-web-access extract https://example.com --schema ./schema.json
+gologin-web-access change-track https://example.com --format markdown
+gologin-web-access parse-document ./example.pdf
 ```
 
 ### Interact With A Site
@@ -198,11 +244,15 @@ export GOLOGIN_CLOUD_TOKEN="gl_..."
 export GOLOGIN_DEFAULT_PROFILE_ID="profile_123"
 
 gologin-web-access open https://example.com
+gologin-web-access tabs
 gologin-web-access snapshot
 gologin-web-access click e3
 gologin-web-access type e5 "search terms"
 gologin-web-access wait 1500
 gologin-web-access get title
+gologin-web-access eval "document.title"
+gologin-web-access cookies --output ./cookies.json
+gologin-web-access storage-export ./storage.json
 gologin-web-access screenshot ./page.png
 gologin-web-access current
 gologin-web-access close
@@ -215,6 +265,14 @@ export GOLOGIN_CLOUD_TOKEN="gl_..."
 
 gologin-web-access search-browser "gologin antidetect browser"
 gologin-web-access snapshot -i
+```
+
+### Reusable Workflows
+
+```bash
+gologin-web-access run ./examples/runbook.json --session s1
+gologin-web-access batch ./examples/runbook.json --targets ./examples/targets.json --concurrency 2
+gologin-web-access jobs
 ```
 
 `snapshot` prints refs such as `e1`, `e2`, `e3`. Those refs stay valid until the page changes or you take a new snapshot.
@@ -239,6 +297,7 @@ That separation is intentional. Read commands stay simple and stateless. Browser
 npm install
 npm run build
 npm run typecheck
+npm test
 ```
 
 ## Publish

@@ -20,13 +20,19 @@
     "build": "tsc -p tsconfig.json",
     "dev": "tsx src/cli.ts",
     "start": "node dist/cli.js",
+    "prepare": "npm run build",
+    "test": "tsx --test tests/**/*.test.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "release:check": "npm run typecheck && npm run build && npm pack --dry-run",
     "prepublishOnly": "npm run typecheck && npm run build && npm pack --dry-run"
   },
   "dependencies": {
+    "cheerio": "^1.1.2",
     "commander": "^14.0.1",
-    "gologin-agent-browser-cli": "^0.1.3"
+    "diff": "^8.0.2",
+    "mammoth": "^1.11.0",
+    "pdf-parse": "^2.4.5",
+    "xlsx": "^0.18.5"
   },
   "keywords": [
     "gologin",

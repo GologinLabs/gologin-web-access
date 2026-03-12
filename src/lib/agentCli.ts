@@ -9,6 +9,8 @@ type AgentCliInvocation = {
   command: string;
   args: string[];
   cwd: string;
+  source: "installed-package" | "sibling-project" | "path-command";
+  version?: string;
 };
 
 export async function runAgentCommand(args: string[], config: ResolvedConfig): Promise<void> {
@@ -18,6 +20,14 @@ export async function runAgentCommand(args: string[], config: ResolvedConfig): P
   if (exitCode !== 0) {
     throw new SilentExitError(exitCode);
   }
+}
+
+export async function runAgentCommandCapture(
+  args: string[],
+  config: ResolvedConfig,
+): Promise<{ exitCode: number; stdout: string; stderr: string }> {
+  const invocation = await resolveAgentCliInvocation();
+  return spawnAndCapture(invocation, args, config);
 }
 
 export async function isDaemonReachable(port: number): Promise<boolean> {
@@ -38,19 +48,15 @@ export async function agentCliAvailable(): Promise<boolean> {
   }
 }
 
-async function resolveAgentCliInvocation(): Promise<AgentCliInvocation> {
-  const installedPackageRoot = resolveInstalledAgentPackageRoot();
-  if (installedPackageRoot) {
-    const distCli = path.join(installedPackageRoot, "dist", "cli.js");
-    if (await exists(distCli)) {
-      return {
-        command: process.execPath,
-        args: [distCli],
-        cwd: installedPackageRoot,
-      };
-    }
+export async function inspectAgentCli(): Promise<AgentCliInvocation | undefined> {
+  try {
+    return await resolveAgentCliInvocation();
+  } catch {
+    return undefined;
   }
+}
 
+async function resolveAgentCliInvocation(): Promise<AgentCliInvocation> {
   const projectRoot = resolveSiblingProject("gologin-agent");
   const distCli = path.join(projectRoot, "dist", "cli.js");
 
@@ -59,7 +65,23 @@ async function resolveAgentCliInvocation(): Promise<AgentCliInvocation> {
       command: process.execPath,
       args: [distCli],
       cwd: projectRoot,
+      source: "sibling-project",
+      version: await readPackageVersion(projectRoot),
     };
+  }
+
+  const installedPackageRoot = resolveInstalledAgentPackageRoot();
+  if (installedPackageRoot) {
+    const installedDistCli = path.join(installedPackageRoot, "dist", "cli.js");
+    if (await exists(installedDistCli)) {
+      return {
+        command: process.execPath,
+        args: [installedDistCli],
+        cwd: installedPackageRoot,
+        source: "installed-package",
+        version: await readPackageVersion(installedPackageRoot),
+      };
+    }
   }
 
   const tsxCli = path.join(projectRoot, "node_modules", "tsx", "dist", "cli.mjs");
@@ -70,13 +92,25 @@ async function resolveAgentCliInvocation(): Promise<AgentCliInvocation> {
       command: process.execPath,
       args: [tsxCli, srcCli],
       cwd: projectRoot,
+      source: "sibling-project",
+      version: await readPackageVersion(projectRoot),
+    };
+  }
+
+  const pathCommand = await resolvePathCommand("gologin-agent-browser");
+  if (pathCommand) {
+    return {
+      command: pathCommand,
+      args: [],
+      cwd: process.cwd(),
+      source: "path-command",
     };
   }
 
   throw new CliError(
     "Gologin Agent CLI is not available.",
     1,
-    `Install dependency \`gologin-agent-browser-cli\` or provide sibling project at ${projectRoot}.`,
+    `Install \`gologin-agent-browser-cli\`, install \`github:GologinLabs/agent-browser\`, or provide sibling project at ${projectRoot}.`,
   );
 }
 
@@ -118,6 +152,44 @@ function spawnAndWait(
   });
 }
 
+function spawnAndCapture(
+  invocation: AgentCliInvocation,
+  args: string[],
+  config: ResolvedConfig,
+): Promise<{ exitCode: number; stdout: string; stderr: string }> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(invocation.command, [...invocation.args, ...args], {
+      cwd: invocation.cwd,
+      env: buildAgentEnv(config),
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+
+    let stdout = "";
+    let stderr = "";
+
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk.toString("utf8");
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk.toString("utf8");
+    });
+
+    child.on("error", reject);
+    child.on("exit", (code, signal) => {
+      if (signal) {
+        reject(new CliError(`Gologin Agent CLI terminated by signal ${signal}.`));
+        return;
+      }
+
+      resolve({
+        exitCode: code ?? 1,
+        stdout,
+        stderr,
+      });
+    });
+  });
+}
+
 function buildAgentEnv(config: ResolvedConfig): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = {
     ...process.env,
@@ -142,4 +214,42 @@ async function exists(targetPath: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+async function readPackageVersion(packageRoot: string): Promise<string | undefined> {
+  const packageJsonPath = path.join(packageRoot, "package.json");
+
+  try {
+    const raw = await fs.readFile(packageJsonPath, "utf8");
+    const parsed = JSON.parse(raw) as { version?: unknown };
+    return typeof parsed.version === "string" ? parsed.version : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+async function resolvePathCommand(commandName: string): Promise<string | undefined> {
+  const rawPath = process.env.PATH;
+  if (!rawPath) {
+    return undefined;
+  }
+
+  const pathEntries = rawPath.split(path.delimiter).filter(Boolean);
+  const extensions =
+    process.platform === "win32"
+      ? (process.env.PATHEXT ?? ".EXE;.CMD;.BAT;.COM")
+          .split(";")
+          .filter(Boolean)
+      : [""];
+
+  for (const entry of pathEntries) {
+    for (const extension of extensions) {
+      const candidate = path.join(entry, `${commandName}${extension}`);
+      if (await exists(candidate)) {
+        return candidate;
+      }
+    }
+  }
+
+  return undefined;
 }

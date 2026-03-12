@@ -10,6 +10,10 @@ export interface StoredConfig {
 export interface ResolvedConfig extends StoredConfig {
   daemonPort: number;
   configPath: string;
+  stateDir: string;
+  jobsDir: string;
+  trackingDir: string;
+  artifactsDir: string;
   sources: {
     webUnlockerApiKey: ConfigSource;
     cloudToken: ConfigSource;
@@ -71,4 +75,26 @@ export interface DoctorCheck {
   name: string;
   status: DoctorStatus;
   detail: string;
+}
+
+export type WebAccessJobKind = "crawl" | "run" | "batch";
+export type WebAccessJobStatus = "queued" | "running" | "ok" | "partial" | "failed";
+
+export interface WebAccessJobRecord {
+  jobId: string;
+  kind: WebAccessJobKind;
+  name: string;
+  status: WebAccessJobStatus;
+  cwd: string;
+  args: string[];
+  createdAt: string;
+  updatedAt: string;
+  startedAt?: string;
+  finishedAt?: string;
+  durationMs?: number;
+  outputPath?: string;
+  errorPath?: string;
+  resultPath?: string;
+  error?: string;
+  metadata?: Record<string, unknown>;
 }

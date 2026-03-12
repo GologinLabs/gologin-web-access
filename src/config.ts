@@ -30,6 +30,7 @@ export function getDefaultConfigPath(): string {
 
 export async function loadConfig(): Promise<ResolvedConfig> {
   const configPath = await resolveConfigPath();
+  const stateDir = path.dirname(configPath);
   const fileConfig = await readConfigFile(configPath);
   const webUnlockerEnv = firstEnvValue(ENV_NAMES.webUnlockerApiKey, LEGACY_ENV_NAMES.webUnlockerApiKey);
   const cloudTokenEnv = firstEnvValue(ENV_NAMES.cloudToken, LEGACY_ENV_NAMES.cloudToken);
@@ -43,6 +44,10 @@ export async function loadConfig(): Promise<ResolvedConfig> {
 
   return {
     configPath,
+    stateDir,
+    jobsDir: path.join(stateDir, "jobs"),
+    trackingDir: path.join(stateDir, "tracking"),
+    artifactsDir: path.join(stateDir, "artifacts"),
     webUnlockerApiKey,
     cloudToken,
     defaultProfileId,
