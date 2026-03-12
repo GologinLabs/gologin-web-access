@@ -4,6 +4,7 @@ import path from "path";
 import { createPatch } from "diff";
 
 import { ResolvedConfig, ScrapeFormat } from "./types";
+import { type ScrapeRequestMeta, type ScrapeRequestOptions, scrapeJson, scrapeMarkdown, scrapeRenderedHtml, scrapeText } from "./unlocker";
 
 export interface TrackedSnapshot {
   key: string;
@@ -24,6 +25,12 @@ export interface ChangeTrackingResult {
   currentHash: string;
   updatedAt: string;
   diff?: string;
+}
+
+export interface TrackingSnapshotFetchResult {
+  title?: string;
+  content: string;
+  request?: ScrapeRequestMeta;
 }
 
 export function buildTrackingKey(url: string, explicitKey?: string): string {
@@ -81,6 +88,54 @@ export async function compareAndPersistSnapshot(
     updatedAt: next.updatedAt,
     diff: createPatch(next.key, previous.content, next.content, previous.updatedAt, next.updatedAt)
   };
+}
+
+export async function scrapeForTracking(
+  url: string,
+  apiKey: string,
+  format: ScrapeFormat,
+  options: ScrapeRequestOptions = {},
+): Promise<TrackingSnapshotFetchResult> {
+  switch (format) {
+    case "html": {
+      const result = await scrapeRenderedHtml(url, apiKey, options);
+      return {
+        content: result.content,
+        request: result.request,
+      };
+    }
+    case "text": {
+      const result = await scrapeText(url, apiKey, options);
+      return {
+        content: result.text,
+        request: result.request,
+      };
+    }
+    case "json": {
+      const result = await scrapeJson(url, apiKey, options);
+      return {
+        title: result.data.title ?? undefined,
+        content: JSON.stringify(result.data, null, 2),
+        request: result.request,
+      };
+    }
+    case "markdown":
+    default: {
+      const result = await scrapeMarkdown(url, apiKey, options);
+      return {
+        content: result.markdown,
+        request: result.request,
+      };
+    }
+  }
+}
+
+export function normalizeTrackingFormat(value: string): ScrapeFormat {
+  if (value === "html" || value === "markdown" || value === "text" || value === "json") {
+    return value;
+  }
+
+  throw new Error(`Unsupported change-track format: ${value}`);
 }
 
 function trackingPath(config: ResolvedConfig, key: string): string {

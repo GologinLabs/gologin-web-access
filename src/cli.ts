@@ -2,6 +2,8 @@
 import { Command } from "commander";
 import { buildBackCommand } from "./commands/back";
 import { buildBatchCommand } from "./commands/batch";
+import { buildBatchChangeTrackCommand } from "./commands/batchChangeTrack";
+import { buildBatchExtractCommand } from "./commands/batchExtract";
 import { buildBatchScrapeCommand } from "./commands/batchScrape";
 import { buildCheckCommand } from "./commands/check";
 import { buildChangeTrackCommand } from "./commands/changeTrack";
@@ -82,6 +84,7 @@ async function main(): Promise<void> {
   program.addCommand(buildScrapeTextCommand());
   program.addCommand(buildScrapeJsonCommand());
   program.addCommand(buildBatchScrapeCommand());
+  program.addCommand(buildBatchExtractCommand());
   program.addCommand(buildSearchCommand());
   program.addCommand(buildMapCommand());
   program.addCommand(buildCrawlCommand());
@@ -91,6 +94,7 @@ async function main(): Promise<void> {
   program.addCommand(buildCrawlErrorsCommand());
   program.addCommand(buildExtractCommand());
   program.addCommand(buildChangeTrackCommand());
+  program.addCommand(buildBatchChangeTrackCommand());
   program.addCommand(buildParseDocumentCommand());
   program.addCommand(buildRunCommand());
   program.addCommand(buildBatchCommand());
@@ -160,7 +164,7 @@ async function main(): Promise<void> {
     "after",
     `
 Command groups:
-  Scraping: gologin-web-access scrape|read|scrape-markdown|scrape-text|scrape-json|batch-scrape|search|map|crawl|crawl-start|crawl-status|crawl-result|crawl-errors|extract|change-track|parse-document
+  Scraping: gologin-web-access scrape|read|scrape-markdown|scrape-text|scrape-json|batch-scrape|batch-extract|search|map|crawl|crawl-start|crawl-status|crawl-result|crawl-errors|extract|change-track|batch-change-track|parse-document
   Browser:  gologin-web-access open|search-browser|scrape-screenshot|tabs|tabopen|tabfocus|tabclose|snapshot|click|dblclick|focus|type|fill|hover|select|check|uncheck|press|scroll|scrollintoview|wait|get|back|forward|reload|find|cookies|cookies-import|cookies-clear|storage-export|storage-import|storage-clear|eval|upload|pdf|screenshot|close|sessions|current
   Agent:    gologin-web-access run|batch|jobs|job
 

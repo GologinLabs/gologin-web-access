@@ -36,6 +36,7 @@ These commands use Gologin Web Unlocker:
 - `gologin-web-access scrape-text <url> [--source auto|unlocker|browser]`
 - `gologin-web-access scrape-json <url> [--fallback none|browser]`
 - `gologin-web-access batch-scrape <url...> [--format html|markdown|text|json] [--fallback none|browser] [--source auto|unlocker|browser] [--only-main-content] [--retry <n>] [--backoff-ms <ms>] [--summary]`
+- `gologin-web-access batch-extract <url...> --schema <schema.json> [--source auto|unlocker|browser] [--retry <n>] [--backoff-ms <ms>] [--summary]`
 - `gologin-web-access search <query> [--limit <n>] [--country <cc>] [--language <lang>] [--source auto|unlocker|browser]`
 - `gologin-web-access map <url> [--limit <n>] [--max-depth <n>] [--concurrency <n>] [--strict]`
 - `gologin-web-access crawl <url> [--format html|markdown|text|json] [--limit <n>] [--max-depth <n>] [--only-main-content] [--strict]`
@@ -45,6 +46,7 @@ These commands use Gologin Web Unlocker:
 - `gologin-web-access crawl-errors <jobId>`
 - `gologin-web-access extract <url> --schema <schema.json> [--source auto|unlocker|browser]`
 - `gologin-web-access change-track <url> [--format html|markdown|text|json]`
+- `gologin-web-access batch-change-track <url...> [--format html|markdown|text|json] [--retry <n>] [--backoff-ms <ms>] [--summary]`
 - `gologin-web-access parse-document <url-or-path>`
 - `gologin-web-access run <runbook.json>`
 - `gologin-web-access batch <runbook.json> --targets <targets.json>`
@@ -107,7 +109,9 @@ Use these when you need state, interaction, or multi-step browser flows.
 - Use `crawl` when you need multi-page read-only extraction across a site.
 - Use `crawl-start` plus `crawl-status` and `crawl-result` when the crawl should run detached.
 - Use `extract` when you want deterministic structured output from CSS selectors rather than generic page summaries.
+- Use `batch-extract` when the same selector schema should run across many known URLs.
 - Use `change-track` when you want local change detection against the last stored snapshot of a page.
+- Use `batch-change-track` when you want to monitor a watchlist of pages in one pass.
 - Use `parse-document` when the source is a PDF, DOCX, XLSX, HTML, or local document path instead of a normal HTML page.
 - Use browser commands when you need clicks, forms, navigation, screenshots, sessions, or logged-in/profile-backed flows.
 - Use browser commands when you need ref-based interaction, uploads, PDFs, semantic find flows, keyboard control, or a browser-visible search journey.
@@ -230,6 +234,7 @@ gologin-web-access scrape-markdown https://example.com/docs
 gologin-web-access scrape-text https://docs.browserbase.com/features/stealth-mode
 gologin-web-access scrape-json https://example.com --fallback browser
 gologin-web-access batch-scrape https://docs.browserbase.com/features/contexts https://docs.browserbase.com/features/proxies --format text --only-main-content --summary
+gologin-web-access batch-extract https://example.com https://www.iana.org/help/example-domains --schema ./schema.json --summary
 gologin-web-access search "gologin antidetect browser" --limit 5
 gologin-web-access search "gologin antidetect browser" --limit 5 --source auto
 gologin-web-access map https://example.com --limit 50 --max-depth 2
@@ -237,6 +242,7 @@ gologin-web-access crawl https://docs.browserbase.com --format text --limit 20 -
 gologin-web-access crawl-start https://example.com --limit 20 --max-depth 2
 gologin-web-access extract https://example.com --schema ./schema.json
 gologin-web-access change-track https://example.com --format markdown
+gologin-web-access batch-change-track https://example.com https://example.org --format text --summary
 gologin-web-access parse-document ./example.pdf
 ```
 
@@ -276,6 +282,7 @@ gologin-web-access snapshot -i
 - `read` is the shortest path for "look at this docs page" work: it targets the most readable content block and defaults to `--format text --source auto`.
 - `scrape-markdown` and `scrape-text` also accept `--source unlocker` and `--source browser` when you want to force one path.
 - `extract` now accepts `--source auto|unlocker|browser` and returns `renderSource`, fallback flags, and request metadata with the extracted JSON.
+- `batch-extract` reuses the same extraction path across many URLs and returns one structured result per URL, including request and fallback metadata.
 - `scrape-json` now returns both a flat `headings` array and `headingsByLevel` buckets for `h1` through `h6`.
 - `scrape-json --fallback browser` is available for JS-heavy pages where stateless extraction returns weak heading data.
 - `scrape`, `scrape-markdown`, `scrape-text`, `scrape-json`, and `batch-scrape` accept `--retry`, `--backoff-ms`, and `--timeout-ms`.
@@ -285,6 +292,8 @@ gologin-web-access snapshot -i
 - `batch-scrape --format json` now returns the same structured scrape envelope as `scrape-json`, including `renderSource`, `fallbackAttempted`, `fallbackUsed`, and `request.attemptCount/retryCount/attempts`.
 - `search` now returns `requestedLimit`, `returnedCount`, `warnings`, `cacheTtlMs`, and per-result `position`.
 - `search` may return fewer results than the requested `--limit` when the upstream SERP contains fewer valid results; inspect `returnedCount`, `warnings`, and `attempts`.
+- `change-track` now accepts `--retry`, `--backoff-ms`, and `--timeout-ms`, and JSON output includes request metadata.
+- `batch-change-track` tracks many pages in one pass and reports per-URL `new|same|changed` status plus a summary line when `--summary` is used.
 
 ### Reusable Workflows
 
