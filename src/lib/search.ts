@@ -1,9 +1,20 @@
+import { randomUUID } from "crypto";
+import * as cheerio from "cheerio";
+import { resolveProfileId } from "../config";
+import { CliError } from "./errors";
+import { runAgentCommandCapture } from "./agentCli";
+import type { ResolvedConfig } from "./types";
 import { scrapeRenderedHtml } from "./unlocker";
+
+export type SearchSourceMode = "auto" | "unlocker" | "browser";
+export type SearchProvider = "google" | "bing" | "duckduckgo";
+export type SearchTransport = "unlocker" | "browser";
 
 export interface SearchOptions {
   limit: number;
   country: string;
   language: string;
+  source: SearchSourceMode;
 }
 
 export interface SearchResultItem {
@@ -13,33 +24,154 @@ export interface SearchResultItem {
   host?: string;
 }
 
+export interface SearchAttempt {
+  engine: SearchProvider;
+  source: SearchTransport;
+  url: string;
+  ok: boolean;
+  resultCount: number;
+  error?: string;
+}
+
 export interface SearchResultEnvelope {
-  engine: "google";
+  engine: SearchProvider;
+  source: SearchTransport;
   query: string;
   url: string;
   resultCount: number;
   results: SearchResultItem[];
+  attempts: SearchAttempt[];
 }
 
-export async function searchGoogle(
+type SearchAttemptPlanItem = {
+  engine: SearchProvider;
+  source: SearchTransport;
+};
+
+type SearchExecutor = (
   query: string,
-  apiKey: string,
+  config: ResolvedConfig,
+  options: SearchOptions,
+  engine: SearchProvider,
+) => Promise<{
+  url: string;
+  results: SearchResultItem[];
+}>;
+
+export async function searchWeb(
+  query: string,
+  config: ResolvedConfig,
   options: SearchOptions,
 ): Promise<SearchResultEnvelope> {
-  const searchUrl = buildGoogleSearchUrl(query, options);
-  const scraped = await scrapeRenderedHtml(searchUrl, apiKey);
-  const results = parseGoogleSearchResults(scraped.content, options.limit);
+  const attempts: SearchAttempt[] = [];
+  let lastError: Error | undefined;
 
-  return {
-    engine: "google",
-    query,
-    url: searchUrl,
-    resultCount: results.length,
-    results,
-  };
+  for (const planItem of buildSearchAttemptPlan(options.source, Boolean(config.cloudToken))) {
+    const searchUrl = buildSearchUrl(planItem.engine, query, options);
+
+    try {
+      const executor =
+        planItem.source === "unlocker" ? searchViaUnlocker : searchViaBrowser;
+      const result = await executor(query, config, options, planItem.engine);
+      const attempt: SearchAttempt = {
+        engine: planItem.engine,
+        source: planItem.source,
+        url: result.url,
+        ok: true,
+        resultCount: result.results.length,
+      };
+      attempts.push(attempt);
+
+      if (result.results.length > 0) {
+        return {
+          engine: planItem.engine,
+          source: planItem.source,
+          query,
+          url: result.url,
+          resultCount: result.results.length,
+          results: result.results,
+          attempts,
+        };
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      attempts.push({
+        engine: planItem.engine,
+        source: planItem.source,
+        url: searchUrl,
+        ok: false,
+        resultCount: 0,
+        error: message,
+      });
+      lastError = error instanceof Error ? error : new Error(message);
+    }
+  }
+
+  const detail = attempts
+    .map((attempt) =>
+      `${attempt.source}:${attempt.engine}=${attempt.ok ? `ok(${attempt.resultCount})` : `error(${attempt.error})`}`,
+    )
+    .join(", ");
+
+  throw new CliError(
+    "Search failed across all available search paths.",
+    1,
+    detail || lastError?.message,
+  );
 }
 
-function buildGoogleSearchUrl(query: string, options: SearchOptions): string {
+export function buildSearchAttemptPlan(
+  source: SearchSourceMode,
+  hasCloudToken: boolean,
+): SearchAttemptPlanItem[] {
+  if (source === "browser") {
+    return hasCloudToken ? [{ engine: "bing", source: "browser" }] : [];
+  }
+
+  if (source === "unlocker") {
+    return [
+      { engine: "google", source: "unlocker" },
+      { engine: "duckduckgo", source: "unlocker" },
+      { engine: "bing", source: "unlocker" },
+    ];
+  }
+
+  const plan: SearchAttemptPlanItem[] = [
+    { engine: "google", source: "unlocker" },
+    { engine: "duckduckgo", source: "unlocker" },
+    { engine: "bing", source: "unlocker" },
+  ];
+
+  if (hasCloudToken) {
+    plan.push({ engine: "bing", source: "browser" });
+  }
+
+  return plan;
+}
+
+export function buildSearchUrl(
+  engine: SearchProvider,
+  query: string,
+  options: Pick<SearchOptions, "limit" | "country" | "language">,
+): string {
+  if (engine === "bing") {
+    const url = new URL("https://www.bing.com/search");
+    url.searchParams.set("q", query);
+    url.searchParams.set("count", String(Math.min(Math.max(options.limit, 1), 50)));
+    url.searchParams.set("cc", (options.country || "us").toLowerCase());
+    const locale = normalizeBingLocale(options.country, options.language);
+    url.searchParams.set("setlang", locale);
+    url.searchParams.set("mkt", locale);
+    return url.toString();
+  }
+
+  if (engine === "duckduckgo") {
+    const url = new URL("https://html.duckduckgo.com/html/");
+    url.searchParams.set("q", query);
+    url.searchParams.set("kl", normalizeDuckDuckGoLocale(options.country, options.language));
+    return url.toString();
+  }
+
   const url = new URL("https://www.google.com/search");
   url.searchParams.set("q", query);
   url.searchParams.set("num", String(Math.min(Math.max(options.limit, 1), 100)));
@@ -48,18 +180,14 @@ function buildGoogleSearchUrl(query: string, options: SearchOptions): string {
   return url.toString();
 }
 
-function parseGoogleSearchResults(html: string, limit: number): SearchResultItem[] {
+export function parseGoogleSearchResults(html: string, limit: number): SearchResultItem[] {
   const results: SearchResultItem[] = [];
   const seen = new Set<string>();
   const anchorRegex = /<a\b[^>]*href="\/url\?q=([^"&]+)[^"]*"[^>]*>([\s\S]*?)<\/a>/gi;
 
   for (const match of html.matchAll(anchorRegex)) {
     const decodedUrl = decodeGoogleTarget(match[1]);
-    if (!decodedUrl || seen.has(decodedUrl)) {
-      continue;
-    }
-
-    if (!isUsefulSearchResult(decodedUrl)) {
+    if (!decodedUrl || seen.has(decodedUrl) || !isUsefulSearchResult(decodedUrl)) {
       continue;
     }
 
@@ -68,13 +196,11 @@ function parseGoogleSearchResults(html: string, limit: number): SearchResultItem
       continue;
     }
 
-    const snippet = extractNearbySnippet(html, match.index ?? 0);
-    const host = getHost(decodedUrl);
     results.push({
       title,
       url: decodedUrl,
-      snippet: snippet || undefined,
-      host,
+      snippet: extractGoogleSnippet(html, match.index ?? 0) || undefined,
+      host: getHost(decodedUrl),
     });
     seen.add(decodedUrl);
 
@@ -84,6 +210,241 @@ function parseGoogleSearchResults(html: string, limit: number): SearchResultItem
   }
 
   return results;
+}
+
+export function parseBingSearchResults(html: string, limit: number): SearchResultItem[] {
+  const $ = cheerio.load(html);
+  const results: SearchResultItem[] = [];
+  const seen = new Set<string>();
+
+  $("li.b_algo").each((_, element) => {
+    if (results.length >= limit) {
+      return false;
+    }
+
+    const anchor = $(element).find("h2 a").first();
+    const href = normalizeAbsoluteUrl(anchor.attr("href"));
+    const title = anchor.text().replace(/\s+/g, " ").trim();
+    if (!href || !title || seen.has(href)) {
+      return;
+    }
+
+    const snippet = $(element)
+      .find(".b_caption p, p")
+      .first()
+      .text()
+      .replace(/\s+/g, " ")
+      .trim();
+
+    results.push({
+      title,
+      url: href,
+      snippet: snippet || undefined,
+      host: getHost(href),
+    });
+    seen.add(href);
+  });
+
+  return results;
+}
+
+export function parseDuckDuckGoSearchResults(html: string, limit: number): SearchResultItem[] {
+  const $ = cheerio.load(html);
+  const results: SearchResultItem[] = [];
+  const seen = new Set<string>();
+
+  $("a.result__a").each((_, element) => {
+    if (results.length >= limit) {
+      return false;
+    }
+
+    const anchor = $(element);
+    const href = normalizeAbsoluteUrl(anchor.attr("href"));
+    const title = anchor.text().replace(/\s+/g, " ").trim();
+    if (!href || !title || seen.has(href)) {
+      return;
+    }
+
+    const snippet = anchor
+      .closest(".result")
+      .find(".result__snippet")
+      .first()
+      .text()
+      .replace(/\s+/g, " ")
+      .trim();
+
+    results.push({
+      title,
+      url: href,
+      snippet: snippet || undefined,
+      host: getHost(href),
+    });
+    seen.add(href);
+  });
+
+  return results;
+}
+
+async function searchViaUnlocker(
+  query: string,
+  config: ResolvedConfig,
+  options: SearchOptions,
+  engine: SearchProvider,
+): Promise<{ url: string; results: SearchResultItem[] }> {
+  if (!config.webUnlockerApiKey) {
+    throw new CliError("Missing GOLOGIN_WEB_UNLOCKER_API_KEY for unlocker search.");
+  }
+
+  const searchUrl = buildSearchUrl(engine, query, options);
+  const scraped = await scrapeRenderedHtml(searchUrl, config.webUnlockerApiKey);
+  const results =
+    engine === "google"
+      ? parseGoogleSearchResults(scraped.content, options.limit)
+      : engine === "bing"
+        ? parseBingSearchResults(scraped.content, options.limit)
+        : parseDuckDuckGoSearchResults(scraped.content, options.limit);
+
+  return {
+    url: searchUrl,
+    results,
+  };
+}
+
+async function searchViaBrowser(
+  query: string,
+  config: ResolvedConfig,
+  options: SearchOptions,
+  engine: SearchProvider,
+): Promise<{ url: string; results: SearchResultItem[] }> {
+  if (!config.cloudToken) {
+    throw new CliError("Missing GOLOGIN_CLOUD_TOKEN for browser search fallback.");
+  }
+
+  const sessionId = `search-${randomUUID()}`;
+  const searchUrl = buildSearchUrl(engine, query, options);
+  const openArgs = ["open", searchUrl, "--session", sessionId];
+  const profileId = resolveProfileId(config);
+  if (profileId) {
+    openArgs.push("--profile", profileId);
+  }
+
+  const open = await runAgentCommandCapture(openArgs, config);
+  ensureAgentCommandOk("open", open, searchUrl);
+
+  try {
+    const evalExpression =
+      engine === "bing"
+        ? buildBingBrowserExtractionExpression(options.limit)
+        : buildGoogleBrowserExtractionExpression(options.limit);
+    const evaluated = await runAgentCommandCapture(
+      ["eval", evalExpression, "--json", "--session", sessionId],
+      config,
+    );
+    ensureAgentCommandOk("eval", evaluated, searchUrl);
+
+    const payload = JSON.parse(evaluated.stdout.trim()) as {
+      results?: SearchResultItem[];
+      blocked?: boolean;
+      title?: string;
+    };
+    const results = Array.isArray(payload.results)
+      ? payload.results
+          .map((item) => ({
+            ...item,
+            url: normalizeAbsoluteUrl(item.url) ?? item.url,
+            host: normalizeAbsoluteUrl(item.url)
+              ? getHost(normalizeAbsoluteUrl(item.url)!)
+              : item.host,
+          }))
+          .filter((item) => Boolean(item.url))
+      : [];
+
+    if (payload.blocked) {
+      throw new CliError(
+        `Browser search was blocked on ${engine}.`,
+        1,
+        payload.title ? `Blocked page title: ${payload.title}` : undefined,
+      );
+    }
+
+    return {
+      url: searchUrl,
+      results,
+    };
+  } finally {
+    await runAgentCommandCapture(["close", "--session", sessionId], config).catch(() => undefined);
+  }
+}
+
+function ensureAgentCommandOk(
+  step: string,
+  response: { exitCode: number; stdout: string; stderr: string },
+  url: string,
+): void {
+  if (response.exitCode === 0) {
+    return;
+  }
+
+  const message = response.stderr.trim() || response.stdout.trim() || `Command failed while handling ${url}`;
+  throw new CliError(`Browser search ${step} failed.`, 1, message);
+}
+
+function buildBingBrowserExtractionExpression(limit: number): string {
+  return `(() => {
+    const items = [];
+    const seen = new Set();
+    const nodes = Array.from(document.querySelectorAll("li.b_algo"));
+    for (const node of nodes) {
+      const link = node.querySelector("h2 a");
+      const href = link?.href;
+      const title = link?.textContent?.replace(/\\s+/g, " ").trim();
+      if (!href || !title || seen.has(href)) continue;
+      let host;
+      try { host = new URL(href).hostname; } catch {}
+      const snippet = node.querySelector(".b_caption p, p")?.textContent?.replace(/\\s+/g, " ").trim() || undefined;
+      items.push({ title, url: href, snippet, host });
+      seen.add(href);
+      if (items.length >= ${Math.max(limit, 1)}) break;
+    }
+    const body = document.body.innerText || "";
+    const blocked =
+      body.includes("One last step") ||
+      body.includes("Please solve the challenge below to continue") ||
+      body.includes("Enter the characters you see below");
+    return {
+      blocked,
+      title: document.title,
+      results: items
+    };
+  })()`;
+}
+
+function buildGoogleBrowserExtractionExpression(limit: number): string {
+  return `(() => {
+    const blocked = location.pathname.startsWith("/sorry/") || document.body.innerText.includes("About this page");
+    const items = [];
+    const seen = new Set();
+    const nodes = Array.from(document.querySelectorAll('a[href^="/url?q="]'));
+    for (const node of nodes) {
+      const raw = node.getAttribute("href") || "";
+      const match = raw.match(/\\/url\\?q=([^&]+)/);
+      if (!match) continue;
+      let href;
+      try { href = decodeURIComponent(match[1]); } catch { continue; }
+      const title = node.textContent?.replace(/\\s+/g, " ").trim();
+      if (!href || !title || seen.has(href)) continue;
+      let host;
+      try { host = new URL(href).hostname; } catch {}
+      items.push({ title, url: href, host });
+      seen.add(href);
+      if (items.length >= ${Math.max(limit, 1)}) break;
+    }
+    return {
+      blocked,
+      title: document.title,
+      results: items
+    };
+  })()`;
 }
 
 function decodeGoogleTarget(value: string): string | null {
@@ -113,7 +474,7 @@ function isUsefulSearchResult(url: string): boolean {
   }
 }
 
-function extractNearbySnippet(html: string, startIndex: number): string {
+function extractGoogleSnippet(html: string, startIndex: number): string {
   const nearby = html.slice(startIndex, startIndex + 4000);
   const snippetMatch =
     nearby.match(/<div\b[^>]*class="[^"]*VwiC3b[^"]*"[^>]*>([\s\S]*?)<\/div>/i) ??
@@ -155,5 +516,101 @@ function getHost(url: string): string | undefined {
     return new URL(url).hostname;
   } catch {
     return undefined;
+  }
+}
+
+function normalizeAbsoluteUrl(value: string | undefined): string | null {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    const parsed = new URL(value.startsWith("//") ? `https:${value}` : value);
+    if (
+      parsed.hostname.toLowerCase() === "www.bing.com" &&
+      parsed.pathname.startsWith("/ck/")
+    ) {
+      const decoded = decodeBingTrackingUrl(parsed);
+      if (decoded) {
+        return decoded;
+      }
+    }
+    if (
+      parsed.hostname.toLowerCase().endsWith("duckduckgo.com") &&
+      parsed.pathname.startsWith("/l/")
+    ) {
+      const decoded = decodeDuckDuckGoTrackingUrl(parsed);
+      if (decoded) {
+        return decoded;
+      }
+    }
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return null;
+    }
+    parsed.hash = "";
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
+
+function decodeBingTrackingUrl(parsed: URL): string | null {
+  const encoded = parsed.searchParams.get("u");
+  if (!encoded) {
+    return null;
+  }
+
+  const payload = encoded.startsWith("a1") ? encoded.slice(2) : encoded;
+
+  try {
+    const decoded = Buffer.from(payload, "base64").toString("utf8");
+    const url = new URL(decoded);
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      return null;
+    }
+    url.hash = "";
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+function normalizeBingLocale(country: string, language: string): string {
+  const normalizedLanguage = (language || "en").trim().toLowerCase();
+  const normalizedCountry = (country || "us").trim().toUpperCase();
+  if (!normalizedLanguage) {
+    return `en-${normalizedCountry || "US"}`;
+  }
+
+  if (normalizedLanguage.includes("-")) {
+    const [lang, region] = normalizedLanguage.split("-", 2);
+    return `${lang.toLowerCase()}-${region.toUpperCase()}`;
+  }
+
+  return `${normalizedLanguage}-${normalizedCountry || "US"}`;
+}
+
+function normalizeDuckDuckGoLocale(country: string, language: string): string {
+  const normalizedLanguage = (language || "en").trim().toLowerCase() || "en";
+  const normalizedCountry = (country || "us").trim().toLowerCase() || "us";
+  return `${normalizedCountry}-${normalizedLanguage}`;
+}
+
+function decodeDuckDuckGoTrackingUrl(parsed: URL): string | null {
+  const encoded = parsed.searchParams.get("uddg");
+  if (!encoded) {
+    return null;
+  }
+
+  try {
+    const decoded = decodeURIComponent(encoded);
+    const url = new URL(decoded);
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      return null;
+    }
+    url.hash = "";
+    return url.toString();
+  } catch {
+    return null;
   }
 }

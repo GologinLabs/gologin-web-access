@@ -15,6 +15,7 @@ export function buildMapCommand(): Command {
     .option("--exclude <patterns>", "Comma-separated URL patterns to exclude")
     .option("--ignore-query", "Normalize URLs without query parameters")
     .option("--sitemap <mode>", "include, only, or skip", "include")
+    .option("--strict", "Exit non-zero when any page fails during mapping")
     .action(
       async (
         url: string,
@@ -27,6 +28,7 @@ export function buildMapCommand(): Command {
           exclude?: string;
           ignoreQuery?: boolean;
           sitemap: string;
+          strict?: boolean;
         },
       ) => {
         const config = await loadConfig();
@@ -44,7 +46,7 @@ export function buildMapCommand(): Command {
 
         printJson(result);
 
-        if (result.failed > 0) {
+        if (result.status === "failed" || (options.strict && result.failed > 0)) {
           process.exitCode = 1;
         }
       },

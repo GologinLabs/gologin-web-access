@@ -49,6 +49,7 @@ export interface MapPageResult {
 }
 
 export interface MapSiteResult {
+  status: "ok" | "partial" | "failed";
   rootUrl: string;
   visited: number;
   failed: number;
@@ -64,6 +65,7 @@ export interface CrawlPageResult extends MapPageResult {
 }
 
 export interface CrawlSiteResult {
+  status: "ok" | "partial" | "failed";
   rootUrl: string;
   format: ScrapeFormat;
   visited: number;
@@ -90,8 +92,10 @@ interface ScrapedPage {
 
 export async function mapSite(rootUrl: string, apiKey: string, options: CrawlOptions): Promise<MapSiteResult> {
   const pages = await traverseSite(rootUrl, apiKey, options);
+  const status = resolveTraversalStatus(pages.pages.length, pages.pages.filter((page) => !page.ok).length);
 
   return {
+    status,
     rootUrl: pages.rootUrl,
     visited: pages.pages.length,
     failed: pages.pages.filter((page) => !page.ok).length,
@@ -127,8 +131,10 @@ export async function crawlSite(
   options: CrawlOptions,
 ): Promise<CrawlSiteResult> {
   const pages = await traverseSite(rootUrl, apiKey, options);
+  const status = resolveTraversalStatus(pages.pages.length, pages.pages.filter((page) => !page.ok).length);
 
   return {
+    status,
     rootUrl: pages.rootUrl,
     format,
     visited: pages.pages.length,
@@ -158,6 +164,21 @@ export async function crawlSite(
           },
     ),
   };
+}
+
+export function resolveTraversalStatus(
+  visited: number,
+  failed: number,
+): "ok" | "partial" | "failed" {
+  if (visited === 0 || failed >= visited) {
+    return "failed";
+  }
+
+  if (failed > 0) {
+    return "partial";
+  }
+
+  return "ok";
 }
 
 async function traverseSite(

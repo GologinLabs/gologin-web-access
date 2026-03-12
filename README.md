@@ -35,9 +35,9 @@ These commands use Gologin Web Unlocker:
 - `gologin-web-access scrape-text <url>`
 - `gologin-web-access scrape-json <url>`
 - `gologin-web-access batch-scrape <url...> [--format html|markdown|text|json]`
-- `gologin-web-access search <query> [--limit <n>] [--country <cc>] [--language <lang>]`
-- `gologin-web-access map <url> [--limit <n>] [--max-depth <n>] [--concurrency <n>]`
-- `gologin-web-access crawl <url> [--format html|markdown|text|json] [--limit <n>] [--max-depth <n>]`
+- `gologin-web-access search <query> [--limit <n>] [--country <cc>] [--language <lang>] [--source auto|unlocker|browser]`
+- `gologin-web-access map <url> [--limit <n>] [--max-depth <n>] [--concurrency <n>] [--strict]`
+- `gologin-web-access crawl <url> [--format html|markdown|text|json] [--limit <n>] [--max-depth <n>] [--strict]`
 - `gologin-web-access crawl-start <url> ...`
 - `gologin-web-access crawl-status <jobId>`
 - `gologin-web-access crawl-result <jobId>`
@@ -101,7 +101,7 @@ Use these when you need state, interaction, or multi-step browser flows.
 ## When To Use `scrape` vs `browser`
 
 - Use `scrape` commands when you need page content, extracted text, markdown, or simple structured output.
-- Use `search` when you need web discovery or SERP results before deciding what to scrape.
+- Use `search` when you need web discovery or SERP results before deciding what to scrape. It now tries multiple search paths automatically.
 - Use `map` when you need internal link discovery or a site inventory.
 - Use `crawl` when you need multi-page read-only extraction across a site.
 - Use `crawl-start` plus `crawl-status` and `crawl-result` when the crawl should run detached.
@@ -218,6 +218,7 @@ gologin-web-access scrape https://example.com
 gologin-web-access scrape-markdown https://example.com/docs
 gologin-web-access batch-scrape https://example.com https://example.org --format json
 gologin-web-access search "gologin antidetect browser" --limit 5
+gologin-web-access search "gologin antidetect browser" --limit 5 --source auto
 gologin-web-access map https://example.com --limit 50 --max-depth 2
 gologin-web-access crawl https://example.com --format markdown --limit 20 --max-depth 2
 gologin-web-access crawl-start https://example.com --limit 20 --max-depth 2
@@ -265,6 +266,8 @@ gologin-web-access jobs
 ```
 
 `snapshot` prints refs such as `e1`, `e2`, `e3`. Those refs stay valid until the page changes or you take a new snapshot.
+
+`map` and `crawl` now return `status: ok|partial|failed`. By default, partial results stay usable and do not exit non-zero. Add `--strict` when any failed page should fail the command.
 
 ## Product Boundaries
 
