@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   buildSearchAttemptPlan,
   buildSearchUrl,
+  classifySearchPage,
   parseBingSearchResults,
   parseDuckDuckGoSearchResults,
   parseGoogleSearchResults,
@@ -95,4 +96,41 @@ test("parseDuckDuckGoSearchResults extracts result items from html", () => {
       host: "gologin.com",
     },
   ]);
+});
+
+test("classifySearchPage detects blocked google challenge pages", () => {
+  const html = `
+    <html>
+      <head><title>About this page</title></head>
+      <body>Our systems have detected unusual traffic from your computer network.</body>
+    </html>
+  `;
+
+  assert.equal(classifySearchPage("google", html, []), "blocked");
+});
+
+test("classifySearchPage detects valid empty result pages", () => {
+  const html = `
+    <html>
+      <body>
+        <form><input name="q" value="gologin impossible query"></form>
+        <div>did not match any documents</div>
+      </body>
+    </html>
+  `;
+
+  assert.equal(classifySearchPage("google", html, []), "empty");
+});
+
+test("classifySearchPage rejects invalid non-serp html", () => {
+  const html = `
+    <html>
+      <body>
+        <h1>Example Domain</h1>
+        <p>This domain is for use in illustrative examples.</p>
+      </body>
+    </html>
+  `;
+
+  assert.equal(classifySearchPage("bing", html, []), "invalid");
 });

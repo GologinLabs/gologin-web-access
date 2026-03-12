@@ -101,7 +101,7 @@ Use these when you need state, interaction, or multi-step browser flows.
 ## When To Use `scrape` vs `browser`
 
 - Use `scrape` commands when you need page content, extracted text, markdown, or simple structured output.
-- Use `search` when you need web discovery or SERP results before deciding what to scrape. It now tries multiple search paths automatically.
+- Use `search` when you need web discovery or SERP results before deciding what to scrape. It now tries multiple search paths automatically, validates that the response is a real SERP, and reuses a short local cache for repeated queries.
 - Use `map` when you need internal link discovery or a site inventory.
 - Use `crawl` when you need multi-page read-only extraction across a site.
 - Use `crawl-start` plus `crawl-status` and `crawl-result` when the crawl should run detached.

@@ -1,4 +1,6 @@
-import { randomUUID } from "crypto";
+import { createHash, randomUUID } from "crypto";
+import { promises as fs } from "fs";
+import path from "path";
 import * as cheerio from "cheerio";
 import { resolveProfileId } from "../config";
 import { CliError } from "./errors";
@@ -41,6 +43,8 @@ export interface SearchResultEnvelope {
   resultCount: number;
   results: SearchResultItem[];
   attempts: SearchAttempt[];
+  cacheHit: boolean;
+  cachedAt?: string;
 }
 
 type SearchAttemptPlanItem = {
@@ -58,13 +62,39 @@ type SearchExecutor = (
   results: SearchResultItem[];
 }>;
 
+type SearchPageState = "valid" | "empty" | "blocked" | "invalid";
+
+interface CachedSearchRecord {
+  version: 1;
+  createdAt: string;
+  query: string;
+  options: SearchOptions;
+  envelope: Omit<SearchResultEnvelope, "cacheHit" | "cachedAt">;
+}
+
+const SEARCH_CACHE_VERSION = 1;
+const SEARCH_CACHE_TTL_MS = 10 * 60 * 1000;
+
 export async function searchWeb(
   query: string,
   config: ResolvedConfig,
   options: SearchOptions,
 ): Promise<SearchResultEnvelope> {
+  const cached = await readSearchCache(config, query, options);
+  if (cached) {
+    return cached;
+  }
+
   const attempts: SearchAttempt[] = [];
   let lastError: Error | undefined;
+  let emptyCandidate:
+    | {
+        engine: SearchProvider;
+        source: SearchTransport;
+        url: string;
+        results: SearchResultItem[];
+      }
+    | undefined;
 
   for (const planItem of buildSearchAttemptPlan(options.source, Boolean(config.cloudToken))) {
     const searchUrl = buildSearchUrl(planItem.engine, query, options);
@@ -83,7 +113,7 @@ export async function searchWeb(
       attempts.push(attempt);
 
       if (result.results.length > 0) {
-        return {
+        const envelope: SearchResultEnvelope = {
           engine: planItem.engine,
           source: planItem.source,
           query,
@@ -91,8 +121,18 @@ export async function searchWeb(
           resultCount: result.results.length,
           results: result.results,
           attempts,
+          cacheHit: false,
         };
+        await writeSearchCache(config, query, options, envelope);
+        return envelope;
       }
+
+      emptyCandidate ??= {
+        engine: planItem.engine,
+        source: planItem.source,
+        url: result.url,
+        results: result.results,
+      };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       attempts.push({
@@ -105,6 +145,21 @@ export async function searchWeb(
       });
       lastError = error instanceof Error ? error : new Error(message);
     }
+  }
+
+  if (emptyCandidate) {
+    const envelope: SearchResultEnvelope = {
+      engine: emptyCandidate.engine,
+      source: emptyCandidate.source,
+      query,
+      url: emptyCandidate.url,
+      resultCount: 0,
+      results: [],
+      attempts,
+      cacheHit: false,
+    };
+    await writeSearchCache(config, query, options, envelope);
+    return envelope;
   }
 
   const detail = attempts
@@ -285,6 +340,27 @@ export function parseDuckDuckGoSearchResults(html: string, limit: number): Searc
   return results;
 }
 
+export function classifySearchPage(
+  engine: SearchProvider,
+  html: string,
+  results: SearchResultItem[],
+): SearchPageState {
+  const lower = html.toLowerCase();
+  if (matchesBlockedSearchPage(engine, lower)) {
+    return "blocked";
+  }
+
+  if (results.length > 0) {
+    return "valid";
+  }
+
+  if (matchesEmptySearchPage(engine, lower) || matchesValidSearchShell(engine, lower)) {
+    return "empty";
+  }
+
+  return "invalid";
+}
+
 async function searchViaUnlocker(
   query: string,
   config: ResolvedConfig,
@@ -303,6 +379,15 @@ async function searchViaUnlocker(
       : engine === "bing"
         ? parseBingSearchResults(scraped.content, options.limit)
         : parseDuckDuckGoSearchResults(scraped.content, options.limit);
+  const pageState = classifySearchPage(engine, scraped.content, results);
+
+  if (pageState === "blocked") {
+    throw new CliError(`Unlocker search was blocked on ${engine}.`, 1);
+  }
+
+  if (pageState === "invalid") {
+    throw new CliError(`Unlocker search did not return a valid ${engine} search results page.`, 1);
+  }
 
   return {
     url: searchUrl,
@@ -474,6 +559,51 @@ function isUsefulSearchResult(url: string): boolean {
   }
 }
 
+function matchesBlockedSearchPage(engine: SearchProvider, lowerHtml: string): boolean {
+  const markers =
+    engine === "google"
+      ? [
+          "our systems have detected unusual traffic",
+          "about this page",
+          "/sorry/",
+          "to continue, please type the characters below",
+          "captcha",
+        ]
+      : engine === "bing"
+        ? [
+            "one last step",
+            "please solve the challenge below to continue",
+            "enter the characters you see below",
+            "verify you are human",
+            "captcha",
+          ]
+        : ["anomaly", "captcha", "automated requests", "unusual traffic"];
+
+  return markers.some((marker) => lowerHtml.includes(marker));
+}
+
+function matchesEmptySearchPage(engine: SearchProvider, lowerHtml: string): boolean {
+  const markers =
+    engine === "google"
+      ? ["did not match any documents", "no results found for"]
+      : engine === "bing"
+        ? ["there are no results for", "no results for"]
+        : ["no results.", "no more results."];
+
+  return markers.some((marker) => lowerHtml.includes(marker));
+}
+
+function matchesValidSearchShell(engine: SearchProvider, lowerHtml: string): boolean {
+  const markers =
+    engine === "google"
+      ? ['name="q"', 'href="/search?', 'google search']
+      : engine === "bing"
+        ? ['id="b_results"', 'name="q"', 'class="b_algo"']
+        : ['class="result__a"', 'name="q"', 'duckduckgo'];
+
+  return markers.some((marker) => lowerHtml.includes(marker));
+}
+
 function extractGoogleSnippet(html: string, startIndex: number): string {
   const nearby = html.slice(startIndex, startIndex + 4000);
   const snippetMatch =
@@ -516,6 +646,89 @@ function getHost(url: string): string | undefined {
     return new URL(url).hostname;
   } catch {
     return undefined;
+  }
+}
+
+function buildSearchCacheKey(query: string, options: SearchOptions): string {
+  return createHash("sha1")
+    .update(
+      JSON.stringify({
+        query,
+        limit: options.limit,
+        country: options.country.toLowerCase(),
+        language: options.language.toLowerCase(),
+        source: options.source,
+      }),
+    )
+    .digest("hex");
+}
+
+function getSearchCachePath(config: ResolvedConfig, query: string, options: SearchOptions): string {
+  return path.join(config.stateDir, "search-cache", `${buildSearchCacheKey(query, options)}.json`);
+}
+
+async function readSearchCache(
+  config: ResolvedConfig,
+  query: string,
+  options: SearchOptions,
+): Promise<SearchResultEnvelope | null> {
+  const cachePath = getSearchCachePath(config, query, options);
+
+  try {
+    const raw = await fs.readFile(cachePath, "utf8");
+    const parsed = JSON.parse(raw) as CachedSearchRecord;
+    if (parsed.version !== SEARCH_CACHE_VERSION) {
+      return null;
+    }
+
+    const createdAtMs = Date.parse(parsed.createdAt);
+    if (!Number.isFinite(createdAtMs) || Date.now() - createdAtMs > SEARCH_CACHE_TTL_MS) {
+      return null;
+    }
+
+    return {
+      ...parsed.envelope,
+      cacheHit: true,
+      cachedAt: parsed.createdAt,
+    };
+  } catch (error) {
+    const nodeError = error as NodeJS.ErrnoException;
+    if (nodeError.code === "ENOENT") {
+      return null;
+    }
+
+    return null;
+  }
+}
+
+async function writeSearchCache(
+  config: ResolvedConfig,
+  query: string,
+  options: SearchOptions,
+  envelope: SearchResultEnvelope,
+): Promise<void> {
+  const cachePath = getSearchCachePath(config, query, options);
+  const record: CachedSearchRecord = {
+    version: SEARCH_CACHE_VERSION,
+    createdAt: new Date().toISOString(),
+    query,
+    options,
+    envelope: {
+      engine: envelope.engine,
+      source: envelope.source,
+      query: envelope.query,
+      url: envelope.url,
+      resultCount: envelope.resultCount,
+      results: envelope.results,
+      attempts: envelope.attempts,
+    },
+  };
+
+  try {
+    await fs.mkdir(path.dirname(cachePath), { recursive: true });
+    await fs.writeFile(cachePath, JSON.stringify(record, null, 2) + "\n", "utf8");
+  } catch {
+    // Cache write failures should never block search results.
   }
 }
 
