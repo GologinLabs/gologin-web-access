@@ -31,8 +31,8 @@ The point of the unified CLI is that both modes live in one product with one com
 These commands use Gologin Web Unlocker:
 
 - `gologin-web-access scrape <url>`
-- `gologin-web-access scrape-markdown <url>`
-- `gologin-web-access scrape-text <url>`
+- `gologin-web-access scrape-markdown <url> [--source auto|unlocker|browser]`
+- `gologin-web-access scrape-text <url> [--source auto|unlocker|browser]`
 - `gologin-web-access scrape-json <url> [--fallback none|browser]`
 - `gologin-web-access batch-scrape <url...> [--format html|markdown|text|json] [--fallback none|browser] [--retry <n>] [--backoff-ms <ms>] [--summary]`
 - `gologin-web-access search <query> [--limit <n>] [--country <cc>] [--language <lang>] [--source auto|unlocker|browser]`
@@ -42,7 +42,7 @@ These commands use Gologin Web Unlocker:
 - `gologin-web-access crawl-status <jobId>`
 - `gologin-web-access crawl-result <jobId>`
 - `gologin-web-access crawl-errors <jobId>`
-- `gologin-web-access extract <url> --schema <schema.json>`
+- `gologin-web-access extract <url> --schema <schema.json> [--source auto|unlocker|browser]`
 - `gologin-web-access change-track <url> [--format html|markdown|text|json]`
 - `gologin-web-access parse-document <url-or-path>`
 - `gologin-web-access run <runbook.json>`
@@ -217,6 +217,7 @@ export GOLOGIN_WEB_UNLOCKER_API_KEY="wu_..."
 
 gologin-web-access scrape https://example.com
 gologin-web-access scrape-markdown https://example.com/docs
+gologin-web-access scrape-text https://docs.browserbase.com/features/stealth-mode
 gologin-web-access scrape-json https://example.com --fallback browser
 gologin-web-access batch-scrape https://example.com https://example.org --format json --retry 3 --backoff-ms 2000 --summary
 gologin-web-access search "gologin antidetect browser" --limit 5
@@ -261,6 +262,9 @@ gologin-web-access snapshot -i
 
 ## Structured Output And Retry Controls
 
+- `scrape-markdown` and `scrape-text` now default to `--source auto`: they start with Unlocker, isolate the most readable content block, and can auto-retry with Cloud Browser when the output still looks like JS-rendered docs chrome.
+- `scrape-markdown` and `scrape-text` also accept `--source unlocker` and `--source browser` when you want to force one path.
+- `extract` now accepts `--source auto|unlocker|browser` and returns `renderSource`, fallback flags, and request metadata with the extracted JSON.
 - `scrape-json` now returns both a flat `headings` array and `headingsByLevel` buckets for `h1` through `h6`.
 - `scrape-json --fallback browser` is available for JS-heavy pages where stateless extraction returns weak heading data.
 - `scrape`, `scrape-markdown`, `scrape-text`, `scrape-json`, and `batch-scrape` accept `--retry`, `--backoff-ms`, and `--timeout-ms`.
