@@ -33,8 +33,8 @@ These commands use Gologin Web Unlocker:
 - `gologin-web-access scrape <url>`
 - `gologin-web-access scrape-markdown <url>`
 - `gologin-web-access scrape-text <url>`
-- `gologin-web-access scrape-json <url>`
-- `gologin-web-access batch-scrape <url...> [--format html|markdown|text|json]`
+- `gologin-web-access scrape-json <url> [--fallback none|browser]`
+- `gologin-web-access batch-scrape <url...> [--format html|markdown|text|json] [--retry <n>] [--backoff-ms <ms>] [--summary]`
 - `gologin-web-access search <query> [--limit <n>] [--country <cc>] [--language <lang>] [--source auto|unlocker|browser]`
 - `gologin-web-access map <url> [--limit <n>] [--max-depth <n>] [--concurrency <n>] [--strict]`
 - `gologin-web-access crawl <url> [--format html|markdown|text|json] [--limit <n>] [--max-depth <n>] [--strict]`
@@ -194,6 +194,7 @@ Backward-compatible aliases are also accepted for existing setups:
 Useful config commands:
 
 ```bash
+gologin-web-access version
 gologin-web-access config init
 gologin-web-access config show
 gologin-web-access doctor
@@ -216,7 +217,8 @@ export GOLOGIN_WEB_UNLOCKER_API_KEY="wu_..."
 
 gologin-web-access scrape https://example.com
 gologin-web-access scrape-markdown https://example.com/docs
-gologin-web-access batch-scrape https://example.com https://example.org --format json
+gologin-web-access scrape-json https://example.com --fallback browser
+gologin-web-access batch-scrape https://example.com https://example.org --format json --retry 3 --backoff-ms 2000 --summary
 gologin-web-access search "gologin antidetect browser" --limit 5
 gologin-web-access search "gologin antidetect browser" --limit 5 --source auto
 gologin-web-access map https://example.com --limit 50 --max-depth 2
@@ -256,6 +258,14 @@ export GOLOGIN_CLOUD_TOKEN="gl_..."
 gologin-web-access search-browser "gologin antidetect browser"
 gologin-web-access snapshot -i
 ```
+
+## Structured Output And Retry Controls
+
+- `scrape-json` now returns both a flat `headings` array and `headingsByLevel` buckets for `h1` through `h6`.
+- `scrape-json --fallback browser` is available for JS-heavy pages where stateless extraction returns weak heading data.
+- `scrape`, `scrape-markdown`, `scrape-text`, `scrape-json`, and `batch-scrape` accept `--retry`, `--backoff-ms`, and `--timeout-ms`.
+- `batch-scrape --summary` prints a one-line success/failure summary to `stderr` after the JSON payload.
+- `search` may return fewer results than the requested `--limit` when the upstream SERP contains fewer valid results; inspect the returned `results.length` and `attempts`.
 
 ### Reusable Workflows
 

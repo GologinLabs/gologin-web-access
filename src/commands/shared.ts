@@ -2,6 +2,7 @@ import path from "path";
 import { Command } from "commander";
 import { loadConfig, requireCloudToken, resolveProfileId } from "../config";
 import { runAgentCommand } from "../lib/agentCli";
+import type { ScrapeRequestOptions } from "../lib/unlocker";
 
 export function addSessionOption(command: Command): Command {
   return command.option("--session <id>", "Session ID. Defaults to the current session.");
@@ -83,4 +84,49 @@ export async function runOpenLikeCommand(
 
 export function resolveOutputPath(targetPath: string): string {
   return path.resolve(targetPath);
+}
+
+export function addUnlockerRequestOptions(command: Command): Command {
+  return command
+    .option("--retry <count>", "Retry attempts for timeout, 429, and 5xx responses")
+    .option("--backoff-ms <ms>", "Base exponential backoff in milliseconds for retried requests")
+    .option("--timeout-ms <ms>", "Per-request timeout in milliseconds");
+}
+
+export function normalizeUnlockerRequestOptions(options: {
+  retry?: string;
+  backoffMs?: string;
+  timeoutMs?: string;
+}): ScrapeRequestOptions {
+  return {
+    maxRetries: normalizeOptionalNonNegativeInt(options.retry),
+    backoffMs: normalizeOptionalNonNegativeInt(options.backoffMs),
+    timeoutMs: normalizeOptionalPositiveInt(options.timeoutMs),
+  };
+}
+
+function normalizeOptionalNonNegativeInt(value: string | undefined): number | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    throw new Error(`Expected a non-negative integer, got: ${value}`);
+  }
+
+  return Math.floor(parsed);
+}
+
+function normalizeOptionalPositiveInt(value: string | undefined): number | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    throw new Error(`Expected a positive integer, got: ${value}`);
+  }
+
+  return Math.floor(parsed);
 }

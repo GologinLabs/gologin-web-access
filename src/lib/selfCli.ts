@@ -23,7 +23,18 @@ async function exists(targetPath: string): Promise<boolean> {
 
 export async function resolveSelfCliInvocation(): Promise<SelfInvocation> {
   const projectRoot = resolveProjectRoot();
+  const preferSource = process.env.GOLOGIN_WEB_ACCESS_USE_SOURCE_CLI === "1";
   const distCli = path.join(projectRoot, "dist", "cli.js");
+  const tsxCli = path.join(projectRoot, "node_modules", "tsx", "dist", "cli.mjs");
+  const srcCli = path.join(projectRoot, "src", "cli.ts");
+
+  if (preferSource && (await exists(tsxCli)) && (await exists(srcCli))) {
+    return {
+      command: process.execPath,
+      args: [tsxCli, srcCli],
+      cwd: projectRoot
+    };
+  }
 
   if (await exists(distCli)) {
     return {
@@ -33,8 +44,6 @@ export async function resolveSelfCliInvocation(): Promise<SelfInvocation> {
     };
   }
 
-  const tsxCli = path.join(projectRoot, "node_modules", "tsx", "dist", "cli.mjs");
-  const srcCli = path.join(projectRoot, "src", "cli.ts");
   if ((await exists(tsxCli)) && (await exists(srcCli))) {
     return {
       command: process.execPath,

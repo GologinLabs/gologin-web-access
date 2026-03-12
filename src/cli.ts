@@ -61,7 +61,9 @@ import { buildUploadCommand } from "./commands/upload";
 import { buildWaitCommand } from "./commands/wait";
 import { runDoctor } from "./doctor";
 import { toCliError } from "./lib/errors";
-import { printError } from "./lib/output";
+import { printError, printText } from "./lib/output";
+
+const CLI_VERSION = "0.3.0";
 
 async function main(): Promise<void> {
   const program = new Command();
@@ -69,7 +71,7 @@ async function main(): Promise<void> {
   program
     .name("gologin-web-access")
     .description("Read and interact with the web using Gologin Web Unlocker and Cloud Browser.")
-    .version("0.3.0")
+    .version(CLI_VERSION)
     .showHelpAfterError()
     .showSuggestionAfterError();
 
@@ -139,6 +141,13 @@ async function main(): Promise<void> {
     .option("--json", "Print JSON output")
     .action(async (options: { json?: boolean }) => {
       await runDoctor(options);
+    });
+
+  program
+    .command("version")
+    .description("Print the CLI version.")
+    .action(() => {
+      printText(CLI_VERSION);
     });
 
   const configGroup = program.command("config").description("Inspect or initialize CLI configuration.");

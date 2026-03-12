@@ -29,6 +29,14 @@ export interface ScrapeJsonData {
   canonical?: string | null;
   meta: Record<string, string>;
   headings: string[];
+  headingsByLevel: {
+    h1: string[];
+    h2: string[];
+    h3: string[];
+    h4: string[];
+    h5: string[];
+    h6: string[];
+  };
   links: Array<{
     text: string;
     href: string;
@@ -44,6 +52,13 @@ interface WebUnlockerOptions {
   baseUrl?: string;
   timeoutMs?: number;
   maxRetries?: number;
+  backoffMs?: number;
+}
+
+export interface ScrapeRequestOptions {
+  timeoutMs?: number;
+  maxRetries?: number;
+  backoffMs?: number;
 }
 
 class WebUnlockerClient {
@@ -51,19 +66,21 @@ class WebUnlockerClient {
   private readonly baseUrl: string;
   private readonly timeoutMs: number;
   private readonly maxRetries: number;
+  private readonly backoffMs: number;
 
   public constructor(options: WebUnlockerOptions) {
     this.apiKey = options.apiKey;
     this.baseUrl = normalizeBaseUrl(options.baseUrl ?? DEFAULT_BASE_URL);
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     this.maxRetries = options.maxRetries ?? DEFAULT_MAX_RETRIES;
+    this.backoffMs = options.backoffMs ?? 250;
 
     if (!this.apiKey.trim()) {
       throw new Error("apiKey is required");
     }
   }
 
-  public async scrape(url: string): Promise<ScrapeResult> {
+  public async scrape(url: string, options: ScrapeRequestOptions = {}): Promise<ScrapeResult> {
     assertValidTargetUrl(url);
 
     const requestUrl = new URL("/v1/scrape", this.baseUrl);
@@ -73,8 +90,9 @@ class WebUnlockerClient {
       headers: {
         apikey: this.apiKey,
       },
-      timeoutMs: this.timeoutMs,
-      maxRetries: this.maxRetries,
+      timeoutMs: options.timeoutMs ?? this.timeoutMs,
+      maxRetries: options.maxRetries ?? this.maxRetries,
+      backoffMs: options.backoffMs ?? this.backoffMs,
     });
 
     if (!response.ok) {
@@ -99,28 +117,44 @@ class WebUnlockerClient {
   }
 }
 
-export async function scrapeRenderedHtml(url: string, apiKey: string): Promise<ScrapeResult> {
-  return createWebUnlockerClient(apiKey).scrape(url);
+export async function scrapeRenderedHtml(
+  url: string,
+  apiKey: string,
+  options: ScrapeRequestOptions = {},
+): Promise<ScrapeResult> {
+  return createWebUnlockerClient(apiKey).scrape(url, options);
 }
 
-export async function scrapeText(url: string, apiKey: string): Promise<ScrapeTextResult> {
-  const scraped = await createWebUnlockerClient(apiKey).scrape(url);
+export async function scrapeText(
+  url: string,
+  apiKey: string,
+  options: ScrapeRequestOptions = {},
+): Promise<ScrapeTextResult> {
+  const scraped = await createWebUnlockerClient(apiKey).scrape(url, options);
   return {
     ...scraped,
     text: htmlToText(scraped.content),
   };
 }
 
-export async function scrapeMarkdown(url: string, apiKey: string): Promise<ScrapeMarkdownResult> {
-  const scraped = await createWebUnlockerClient(apiKey).scrape(url);
+export async function scrapeMarkdown(
+  url: string,
+  apiKey: string,
+  options: ScrapeRequestOptions = {},
+): Promise<ScrapeMarkdownResult> {
+  const scraped = await createWebUnlockerClient(apiKey).scrape(url, options);
   return {
     ...scraped,
     markdown: htmlToMarkdown(scraped.content),
   };
 }
 
-export async function scrapeJson(url: string, apiKey: string): Promise<ScrapeJsonResult> {
-  const scraped = await createWebUnlockerClient(apiKey).scrape(url);
+export async function scrapeJson(
+  url: string,
+  apiKey: string,
+  options: ScrapeRequestOptions = {},
+): Promise<ScrapeJsonResult> {
+  const scraped = await createWebUnlockerClient(apiKey).scrape(url, options);
   return {
     ...scraped,
     data: htmlToStructuredData(scraped.content),
@@ -137,9 +171,11 @@ async function fetchWithRetry(
     headers: Record<string, string>;
     timeoutMs: number;
     maxRetries: number;
+    backoffMs: number;
   },
 ): Promise<Response> {
   let lastError: unknown;
+  let lastStatusError: HttpError | undefined;
 
   for (let attempt = 0; attempt <= options.maxRetries; attempt += 1) {
     const controller = new AbortController();
@@ -151,17 +187,43 @@ async function fetchWithRetry(
         signal: controller.signal,
       });
       clearTimeout(timeout);
-      return response;
+
+      if (response.ok) {
+        return response;
+      }
+
+      const body = await safeReadText(response, options.timeoutMs);
+      const error = new HttpError(
+        `Web Unlocker request failed with status ${response.status}.`,
+        response.status,
+        body ? truncate(body, 300) : undefined,
+      );
+      lastStatusError = error;
+
+      if (attempt === options.maxRetries || !isRetriableStatus(response.status)) {
+        throw error;
+      }
+
+      await sleep(computeBackoffDelay(options.backoffMs, attempt));
+      continue;
     } catch (error) {
       clearTimeout(timeout);
       lastError = error;
+
+      if (error instanceof HttpError) {
+        throw error;
+      }
 
       if (attempt === options.maxRetries) {
         break;
       }
 
-      await sleep(250 * (attempt + 1));
+      await sleep(computeBackoffDelay(options.backoffMs, attempt));
     }
+  }
+
+  if (lastStatusError) {
+    throw lastStatusError;
   }
 
   if (lastError instanceof Error && lastError.name === "AbortError") {
@@ -309,10 +371,23 @@ export function htmlToStructuredData(html: string): ScrapeJsonData {
     meta[name] = decodeHtmlEntities(content).trim();
   }
 
-  const headings = (html.match(/<h[1-3]\b[^>]*>[\s\S]*?<\/h[1-3]>/gi) ?? [])
-    .slice(0, MAX_EXTRACTED_HEADINGS)
-    .map((headingHtml) => decodeHtmlEntities(headingHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ")).trim())
-    .filter(Boolean);
+  const headingsByLevel = createEmptyHeadingBuckets();
+  const headings: string[] = [];
+
+  for (const match of Array.from(html.matchAll(/<h([1-6])\b[^>]*>([\s\S]*?)<\/h\1>/gi)).slice(
+    0,
+    MAX_EXTRACTED_HEADINGS,
+  )) {
+    const level = Number(match[1]);
+    const text = cleanInlineHtml(match[2]);
+    if (!text) {
+      continue;
+    }
+
+    const bucketName = `h${level}` as keyof ScrapeJsonData["headingsByLevel"];
+    headingsByLevel[bucketName].push(text);
+    headings.push(text);
+  }
 
   const links = Array.from(html.matchAll(/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi))
     .slice(0, MAX_EXTRACTED_LINKS)
@@ -332,12 +407,13 @@ export function htmlToStructuredData(html: string): ScrapeJsonData {
     canonical: canonical ? decodeHtmlEntities(canonical).trim() : null,
     meta,
     headings,
+    headingsByLevel,
     links,
   };
 }
 
 function cleanInlineHtml(value: string): string {
-  return decodeHtmlEntities(value.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ")).trim();
+  return decodeHtmlEntities(stripScriptAndStyleBlocks(value).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ")).trim();
 }
 
 function getTagAttr(tag: string, attrName: string): string | null {
@@ -364,4 +440,29 @@ function decodeHtmlEntities(value: string): string {
   decoded = decoded.replace(/&#(\d+);/g, (_, num: string) => String.fromCharCode(Number(num)));
   decoded = decoded.replace(/&#x([0-9a-f]+);/gi, (_, hex: string) => String.fromCharCode(parseInt(hex, 16)));
   return decoded;
+}
+
+function stripScriptAndStyleBlocks(value: string): string {
+  return value
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gis, " ")
+    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gis, " ");
+}
+
+function createEmptyHeadingBuckets(): ScrapeJsonData["headingsByLevel"] {
+  return {
+    h1: [],
+    h2: [],
+    h3: [],
+    h4: [],
+    h5: [],
+    h6: [],
+  };
+}
+
+function isRetriableStatus(status: number): boolean {
+  return status === 408 || status === 429 || status === 500 || status === 502 || status === 503 || status === 504;
+}
+
+function computeBackoffDelay(baseDelayMs: number, attempt: number): number {
+  return Math.max(0, baseDelayMs) * Math.pow(2, attempt);
 }
