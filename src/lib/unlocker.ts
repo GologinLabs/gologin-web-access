@@ -13,6 +13,7 @@ export interface ScrapeResult {
   contentType?: string | null;
   status?: number | null;
   headers?: Record<string, string>;
+  request: ScrapeRequestMeta;
 }
 
 export interface ScrapeTextResult extends ScrapeResult {
@@ -61,6 +62,19 @@ export interface ScrapeRequestOptions {
   backoffMs?: number;
 }
 
+export interface ScrapeRequestAttempt {
+  attempt: number;
+  status?: number | null;
+  error?: string;
+  retriable: boolean;
+}
+
+export interface ScrapeRequestMeta {
+  attemptCount: number;
+  retryCount: number;
+  attempts: ScrapeRequestAttempt[];
+}
+
 class WebUnlockerClient {
   private readonly apiKey: string;
   private readonly baseUrl: string;
@@ -86,7 +100,7 @@ class WebUnlockerClient {
     const requestUrl = new URL("/v1/scrape", this.baseUrl);
     requestUrl.searchParams.set("url", url);
 
-    const response = await fetchWithRetry(requestUrl.toString(), {
+    const { response, request } = await fetchWithRetry(requestUrl.toString(), {
       headers: {
         apikey: this.apiKey,
       },
@@ -113,6 +127,7 @@ class WebUnlockerClient {
       contentType: response.headers.get("content-type"),
       status: response.status,
       headers: headersToRecord(response.headers),
+      request,
     };
   }
 }
@@ -173,7 +188,8 @@ async function fetchWithRetry(
     maxRetries: number;
     backoffMs: number;
   },
-): Promise<Response> {
+): Promise<{ response: Response; request: ScrapeRequestMeta }> {
+  const attempts: ScrapeRequestAttempt[] = [];
   let lastError: unknown;
   let lastStatusError: HttpError | undefined;
 
@@ -189,7 +205,15 @@ async function fetchWithRetry(
       clearTimeout(timeout);
 
       if (response.ok) {
-        return response;
+        attempts.push({
+          attempt: attempt + 1,
+          status: response.status,
+          retriable: false,
+        });
+        return {
+          response,
+          request: buildScrapeRequestMeta(attempts),
+        };
       }
 
       const body = await safeReadText(response, options.timeoutMs);
@@ -198,10 +222,17 @@ async function fetchWithRetry(
         response.status,
         body ? truncate(body, 300) : undefined,
       );
+      const retriable = attempt < options.maxRetries && isRetriableStatus(response.status);
+      attempts.push({
+        attempt: attempt + 1,
+        status: response.status,
+        error: error.message,
+        retriable,
+      });
       lastStatusError = error;
 
-      if (attempt === options.maxRetries || !isRetriableStatus(response.status)) {
-        throw error;
+      if (!retriable) {
+        throw attachRequestMeta(error, attempts);
       }
 
       await sleep(computeBackoffDelay(options.backoffMs, attempt));
@@ -214,8 +245,22 @@ async function fetchWithRetry(
         throw error;
       }
 
+      const normalizedError =
+        error instanceof Error && error.name === "AbortError"
+          ? new HttpError("Web Unlocker request timed out.", 408)
+          : error instanceof Error
+            ? new HttpError(error.message, 500)
+            : new HttpError("Web Unlocker request failed.", 500);
+      const retriable = attempt < options.maxRetries;
+      attempts.push({
+        attempt: attempt + 1,
+        status: normalizedError.status,
+        error: normalizedError.message,
+        retriable,
+      });
+
       if (attempt === options.maxRetries) {
-        break;
+        throw attachRequestMeta(normalizedError, attempts);
       }
 
       await sleep(computeBackoffDelay(options.backoffMs, attempt));
@@ -223,16 +268,33 @@ async function fetchWithRetry(
   }
 
   if (lastStatusError) {
-    throw lastStatusError;
+    throw attachRequestMeta(lastStatusError, attempts);
   }
 
   if (lastError instanceof Error && lastError.name === "AbortError") {
-    throw new HttpError("Web Unlocker request timed out.", 408);
+    throw attachRequestMeta(new HttpError("Web Unlocker request timed out.", 408), attempts);
   }
 
-  throw lastError instanceof Error
-    ? new HttpError(lastError.message, 500)
-    : new HttpError("Web Unlocker request failed.", 500);
+  throw attachRequestMeta(
+    lastError instanceof Error
+      ? new HttpError(lastError.message, 500)
+      : new HttpError("Web Unlocker request failed.", 500),
+    attempts,
+  );
+}
+
+function buildScrapeRequestMeta(attempts: ScrapeRequestAttempt[]): ScrapeRequestMeta {
+  return {
+    attemptCount: attempts.length,
+    retryCount: Math.max(0, attempts.length - 1),
+    attempts: attempts.map((attempt) => ({ ...attempt })),
+  };
+}
+
+function attachRequestMeta(error: HttpError, attempts: ScrapeRequestAttempt[]): HttpError {
+  return Object.assign(error, {
+    request: buildScrapeRequestMeta(attempts),
+  });
 }
 
 function normalizeBaseUrl(baseUrl: string): string {

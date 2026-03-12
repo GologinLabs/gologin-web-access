@@ -34,7 +34,7 @@ These commands use Gologin Web Unlocker:
 - `gologin-web-access scrape-markdown <url>`
 - `gologin-web-access scrape-text <url>`
 - `gologin-web-access scrape-json <url> [--fallback none|browser]`
-- `gologin-web-access batch-scrape <url...> [--format html|markdown|text|json] [--retry <n>] [--backoff-ms <ms>] [--summary]`
+- `gologin-web-access batch-scrape <url...> [--format html|markdown|text|json] [--fallback none|browser] [--retry <n>] [--backoff-ms <ms>] [--summary]`
 - `gologin-web-access search <query> [--limit <n>] [--country <cc>] [--language <lang>] [--source auto|unlocker|browser]`
 - `gologin-web-access map <url> [--limit <n>] [--max-depth <n>] [--concurrency <n>] [--strict]`
 - `gologin-web-access crawl <url> [--format html|markdown|text|json] [--limit <n>] [--max-depth <n>] [--strict]`
@@ -265,7 +265,9 @@ gologin-web-access snapshot -i
 - `scrape-json --fallback browser` is available for JS-heavy pages where stateless extraction returns weak heading data.
 - `scrape`, `scrape-markdown`, `scrape-text`, `scrape-json`, and `batch-scrape` accept `--retry`, `--backoff-ms`, and `--timeout-ms`.
 - `batch-scrape --summary` prints a one-line success/failure summary to `stderr` after the JSON payload.
-- `search` may return fewer results than the requested `--limit` when the upstream SERP contains fewer valid results; inspect the returned `results.length` and `attempts`.
+- `batch-scrape --format json` now returns the same structured scrape envelope as `scrape-json`, including `renderSource`, `fallbackAttempted`, `fallbackUsed`, and `request.attemptCount/retryCount/attempts`.
+- `search` now returns `requestedLimit`, `returnedCount`, `warnings`, `cacheTtlMs`, and per-result `position`.
+- `search` may return fewer results than the requested `--limit` when the upstream SERP contains fewer valid results; inspect `returnedCount`, `warnings`, and `attempts`.
 
 ### Reusable Workflows
 

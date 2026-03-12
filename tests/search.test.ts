@@ -54,6 +54,7 @@ test("parseGoogleSearchResults extracts result items from html", () => {
 
   assert.deepEqual(parseGoogleSearchResults(html, 5), [
     {
+      position: 1,
       title: "GoLogin official site",
       url: "https://gologin.com/",
       snippet: "Manage multiple accounts safely.",
@@ -72,6 +73,7 @@ test("parseBingSearchResults extracts result items from html", () => {
 
   assert.deepEqual(parseBingSearchResults(html, 5), [
     {
+      position: 1,
       title: "GoLogin",
       url: "https://gologin.com/",
       snippet: "Manage multiple accounts safely.",
@@ -90,6 +92,7 @@ test("parseDuckDuckGoSearchResults extracts result items from html", () => {
 
   assert.deepEqual(parseDuckDuckGoSearchResults(html, 5), [
     {
+      position: 1,
       title: "GoLogin",
       url: "https://gologin.com/",
       snippet: "Manage multiple accounts safely.",
@@ -133,4 +136,17 @@ test("classifySearchPage rejects invalid non-serp html", () => {
   `;
 
   assert.equal(classifySearchPage("bing", html, []), "invalid");
+});
+
+test("classifySearchPage treats valid empty shells as empty, not valid", () => {
+  const html = `
+    <html>
+      <head><title>Google Search</title></head>
+      <body>
+        <form><input name="q" value="antidetect browser"></form>
+      </body>
+    </html>
+  `;
+
+  assert.equal(classifySearchPage("google", html, []), "empty");
 });

@@ -1,8 +1,9 @@
 import { Command } from "commander";
 import { loadConfig, requireWebUnlockerKey } from "../config";
 import { printJson } from "../lib/output";
+import { normalizeStructuredFallbackMode, scrapeStructuredJson } from "../lib/structuredScrape";
 import { ScrapeFormat } from "../lib/types";
-import { ScrapeRequestOptions, scrapeJson, scrapeMarkdown, scrapeRenderedHtml, scrapeText } from "../lib/unlocker";
+import { ScrapeRequestOptions, scrapeMarkdown, scrapeRenderedHtml, scrapeText } from "../lib/unlocker";
 import { addUnlockerRequestOptions, normalizeUnlockerRequestOptions } from "./shared";
 
 export function buildBatchScrapeCommand(): Command {
@@ -12,6 +13,7 @@ export function buildBatchScrapeCommand(): Command {
     .argument("<urls...>", "One or more URLs")
     .option("--format <format>", "html, markdown, text, or json", "html")
     .option("--concurrency <count>", "Number of concurrent requests", "4")
+    .option("--fallback <mode>", "Structured scrape fallback: none or browser", "none")
     .option("--summary", "Print one-line summary stats to stderr after the JSON output")
     .action(
       async (
@@ -19,6 +21,7 @@ export function buildBatchScrapeCommand(): Command {
         options: {
           format: ScrapeFormat;
           concurrency: string;
+          fallback?: string;
           retry?: string;
           backoffMs?: string;
           timeoutMs?: string;
@@ -30,9 +33,10 @@ export function buildBatchScrapeCommand(): Command {
       const format = normalizeFormat(options.format);
       const concurrency = Math.max(1, Number(options.concurrency) || 4);
       const requestOptions = normalizeUnlockerRequestOptions(options);
+      const fallback = normalizeStructuredFallbackMode(options.fallback);
       const results = await mapWithConcurrency(urls, concurrency, async (url) => {
         try {
-          const output = await formatOutput(url, apiKey, format, requestOptions);
+          const output = await formatOutput(url, config, apiKey, format, requestOptions, fallback);
           return {
             url,
             ok: true,
@@ -40,11 +44,14 @@ export function buildBatchScrapeCommand(): Command {
             output,
           };
         } catch (error) {
+          const request = extractRequestMeta(error);
           return {
             url,
             ok: false,
             format,
             error: error instanceof Error ? error.message : "Unknown error",
+            status: extractStatusCode(error),
+            request,
           };
         }
       });
@@ -71,9 +78,11 @@ function normalizeFormat(value: string): ScrapeFormat {
 
 async function formatOutput(
   url: string,
+  config: Awaited<ReturnType<typeof loadConfig>>,
   apiKey: string,
   format: ScrapeFormat,
   requestOptions: ScrapeRequestOptions,
+  fallback: "none" | "browser",
 ): Promise<unknown> {
   switch (format) {
     case "html":
@@ -83,7 +92,10 @@ async function formatOutput(
     case "text":
       return (await scrapeText(url, apiKey, requestOptions)).text;
     case "json":
-      return (await scrapeJson(url, apiKey, requestOptions)).data;
+      return await scrapeStructuredJson(url, config, apiKey, {
+        fallback,
+        request: requestOptions,
+      });
     default:
       return (await scrapeRenderedHtml(url, apiKey, requestOptions)).content;
   }
@@ -115,4 +127,30 @@ function formatBatchSummary(results: Array<{ ok: boolean }>): string {
   const ok = results.filter((result) => result.ok).length;
   const failed = requested - ok;
   return `Summary: ${requested} requested, ${ok} ok, ${failed} failed.`;
+}
+
+function extractStatusCode(error: unknown): number | undefined {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "status" in error &&
+    typeof (error as { status?: unknown }).status === "number"
+  ) {
+    return (error as { status: number }).status;
+  }
+
+  return undefined;
+}
+
+function extractRequestMeta(error: unknown): unknown {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "request" in error &&
+    typeof (error as { request?: unknown }).request === "object"
+  ) {
+    return (error as { request: unknown }).request;
+  }
+
+  return undefined;
 }

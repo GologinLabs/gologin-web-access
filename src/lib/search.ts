@@ -20,6 +20,7 @@ export interface SearchOptions {
 }
 
 export interface SearchResultItem {
+  position: number;
   title: string;
   url: string;
   snippet?: string;
@@ -32,6 +33,7 @@ export interface SearchAttempt {
   url: string;
   ok: boolean;
   resultCount: number;
+  warning?: string;
   error?: string;
 }
 
@@ -40,11 +42,15 @@ export interface SearchResultEnvelope {
   source: SearchTransport;
   query: string;
   url: string;
+  requestedLimit: number;
   resultCount: number;
+  returnedCount: number;
   results: SearchResultItem[];
   attempts: SearchAttempt[];
+  warnings: string[];
   cacheHit: boolean;
   cachedAt?: string;
+  cacheTtlMs: number;
 }
 
 type SearchAttemptPlanItem = {
@@ -69,7 +75,15 @@ interface CachedSearchRecord {
   createdAt: string;
   query: string;
   options: SearchOptions;
-  envelope: Omit<SearchResultEnvelope, "cacheHit" | "cachedAt">;
+  envelope: Partial<Omit<SearchResultEnvelope, "cacheHit" | "cachedAt">> & {
+    engine: SearchProvider;
+    source: SearchTransport;
+    query: string;
+    url: string;
+    resultCount: number;
+    results: SearchResultItem[];
+    attempts: SearchAttempt[];
+  };
 }
 
 const SEARCH_CACHE_VERSION = 1;
@@ -93,6 +107,7 @@ export async function searchWeb(
         source: SearchTransport;
         url: string;
         results: SearchResultItem[];
+        warning?: string;
       }
     | undefined;
 
@@ -107,21 +122,30 @@ export async function searchWeb(
         engine: planItem.engine,
         source: planItem.source,
         url: result.url,
-        ok: true,
+        ok: result.results.length > 0,
         resultCount: result.results.length,
       };
+
+      if (result.results.length === 0) {
+        attempt.warning = `No results parsed from ${planItem.engine} ${planItem.source} response`;
+      }
       attempts.push(attempt);
 
       if (result.results.length > 0) {
+        const warnings = buildSearchWarnings(options.limit, result.results.length);
         const envelope: SearchResultEnvelope = {
           engine: planItem.engine,
           source: planItem.source,
           query,
           url: result.url,
+          requestedLimit: options.limit,
           resultCount: result.results.length,
+          returnedCount: result.results.length,
           results: result.results,
           attempts,
+          warnings,
           cacheHit: false,
+          cacheTtlMs: SEARCH_CACHE_TTL_MS,
         };
         await writeSearchCache(config, query, options, envelope);
         return envelope;
@@ -132,6 +156,7 @@ export async function searchWeb(
         source: planItem.source,
         url: result.url,
         results: result.results,
+        warning: attempt.warning,
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -148,15 +173,23 @@ export async function searchWeb(
   }
 
   if (emptyCandidate) {
+    const warnings = [
+      ...(emptyCandidate.warning ? [emptyCandidate.warning] : []),
+      ...buildSearchWarnings(options.limit, 0),
+    ];
     const envelope: SearchResultEnvelope = {
       engine: emptyCandidate.engine,
       source: emptyCandidate.source,
       query,
       url: emptyCandidate.url,
+      requestedLimit: options.limit,
       resultCount: 0,
+      returnedCount: 0,
       results: [],
       attempts,
+      warnings,
       cacheHit: false,
+      cacheTtlMs: SEARCH_CACHE_TTL_MS,
     };
     await writeSearchCache(config, query, options, envelope);
     return envelope;
@@ -252,6 +285,7 @@ export function parseGoogleSearchResults(html: string, limit: number): SearchRes
     }
 
     results.push({
+      position: results.length + 1,
       title,
       url: decodedUrl,
       snippet: extractGoogleSnippet(html, match.index ?? 0) || undefined,
@@ -292,6 +326,7 @@ export function parseBingSearchResults(html: string, limit: number): SearchResul
       .trim();
 
     results.push({
+      position: results.length + 1,
       title,
       url: href,
       snippet: snippet || undefined,
@@ -329,6 +364,7 @@ export function parseDuckDuckGoSearchResults(html: string, limit: number): Searc
       .trim();
 
     results.push({
+      position: results.length + 1,
       title,
       url: href,
       snippet: snippet || undefined,
@@ -686,10 +722,13 @@ async function readSearchCache(
       return null;
     }
 
+    const normalized = normalizeCachedEnvelope(parsed.envelope, options.limit);
+
     return {
-      ...parsed.envelope,
+      ...normalized,
       cacheHit: true,
       cachedAt: parsed.createdAt,
+      cacheTtlMs: SEARCH_CACHE_TTL_MS,
     };
   } catch (error) {
     const nodeError = error as NodeJS.ErrnoException;
@@ -699,6 +738,56 @@ async function readSearchCache(
 
     return null;
   }
+}
+
+function normalizeCachedEnvelope(
+  envelope: CachedSearchRecord["envelope"],
+  requestedLimit: number,
+): Omit<SearchResultEnvelope, "cacheHit" | "cachedAt"> {
+  const results = Array.isArray(envelope.results)
+    ? envelope.results.map((result, index) => ({
+        ...result,
+        position: typeof result.position === "number" ? result.position : index + 1,
+      }))
+    : [];
+  const returnedCount = typeof envelope.returnedCount === "number"
+    ? envelope.returnedCount
+    : results.length;
+  const normalizedRequestedLimit = typeof envelope.requestedLimit === "number"
+    ? envelope.requestedLimit
+    : requestedLimit;
+  const attempts = Array.isArray(envelope.attempts)
+    ? envelope.attempts.map((attempt) => normalizeCachedAttempt(attempt))
+    : [];
+  const warnings = Array.isArray(envelope.warnings)
+    ? envelope.warnings
+    : buildSearchWarnings(normalizedRequestedLimit, returnedCount);
+
+  return {
+    engine: envelope.engine,
+    source: envelope.source,
+    query: envelope.query,
+    url: envelope.url,
+    requestedLimit: normalizedRequestedLimit,
+    resultCount: typeof envelope.resultCount === "number" ? envelope.resultCount : returnedCount,
+    returnedCount,
+    results,
+    attempts,
+    warnings,
+    cacheTtlMs: typeof envelope.cacheTtlMs === "number" ? envelope.cacheTtlMs : SEARCH_CACHE_TTL_MS,
+  };
+}
+
+function normalizeCachedAttempt(attempt: SearchAttempt): SearchAttempt {
+  if (!attempt.ok || attempt.resultCount > 0 || attempt.error) {
+    return attempt;
+  }
+
+  return {
+    ...attempt,
+    ok: false,
+    warning: attempt.warning ?? `No results parsed from ${attempt.engine} ${attempt.source} response`,
+  };
 }
 
 async function writeSearchCache(
@@ -718,9 +807,13 @@ async function writeSearchCache(
       source: envelope.source,
       query: envelope.query,
       url: envelope.url,
+      cacheTtlMs: envelope.cacheTtlMs,
       resultCount: envelope.resultCount,
+      requestedLimit: envelope.requestedLimit,
+      returnedCount: envelope.returnedCount,
       results: envelope.results,
       attempts: envelope.attempts,
+      warnings: envelope.warnings,
     },
   };
 
@@ -730,6 +823,14 @@ async function writeSearchCache(
   } catch {
     // Cache write failures should never block search results.
   }
+}
+
+function buildSearchWarnings(requestedLimit: number, returnedCount: number): string[] {
+  if (returnedCount >= requestedLimit) {
+    return [];
+  }
+
+  return [`Requested ${requestedLimit} results but received ${returnedCount}.`];
 }
 
 function normalizeAbsoluteUrl(value: string | undefined): string | null {
