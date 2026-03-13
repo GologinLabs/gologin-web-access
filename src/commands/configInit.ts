@@ -1,26 +1,33 @@
 import { Command } from "commander";
 import { DEFAULT_DAEMON_PORT, ENV_NAMES, initConfigFile } from "../config";
+import { validateCloudToken } from "../lib/cloudApi";
 import { printKeyValueRows, printText } from "../lib/output";
+import { validateWebUnlockerKey } from "../lib/unlocker";
 
 export function buildConfigInitCommand(): Command {
   return new Command("init")
     .description("Write ~/.gologin-web-access/config.json with current values or placeholders. Recommended: persist both Web Unlocker and Cloud Browser credentials.")
     .option("--web-unlocker-api-key <key>", "Persist a Web Unlocker API key")
+    .option("--web-unlocker-key <key>", "Alias for --web-unlocker-api-key")
     .option("--cloud-token <token>", "Persist a Cloud Browser token")
     .option("--default-profile-id <id>", "Persist a default Gologin profile ID")
     .option("--daemon-port <port>", "Persist a daemon port", String(DEFAULT_DAEMON_PORT))
+    .option("--no-validate", "Skip live key validation after writing config")
     .option("--force", "Overwrite an existing config file")
     .action(
       async (options: {
         webUnlockerApiKey?: string;
+        webUnlockerKey?: string;
         cloudToken?: string;
         defaultProfileId?: string;
         daemonPort?: string;
+        validate?: boolean;
         force?: boolean;
       }) => {
+        const webUnlockerApiKey = options.webUnlockerApiKey ?? options.webUnlockerKey ?? process.env[ENV_NAMES.webUnlockerApiKey];
         const result = await initConfigFile(
           {
-            webUnlockerApiKey: options.webUnlockerApiKey ?? process.env[ENV_NAMES.webUnlockerApiKey],
+            webUnlockerApiKey,
             cloudToken: options.cloudToken ?? process.env[ENV_NAMES.cloudToken],
             defaultProfileId: options.defaultProfileId ?? process.env[ENV_NAMES.defaultProfileId],
             daemonPort: Number(options.daemonPort ?? process.env[ENV_NAMES.daemonPort] ?? DEFAULT_DAEMON_PORT),
@@ -59,6 +66,31 @@ export function buildConfigInitCommand(): Command {
           printText(
             "Recommended next step: configure both GOLOGIN_WEB_UNLOCKER_API_KEY and GOLOGIN_CLOUD_TOKEN so agents can use scraping and browser flows without asking again.",
           );
+        }
+
+        if (options.validate === false) {
+          return;
+        }
+
+        const validationRows: Array<{ label: string; value: string }> = [];
+        if (result.config.webUnlockerApiKey) {
+          const validation = await validateWebUnlockerKey(result.config.webUnlockerApiKey);
+          validationRows.push({
+            label: "Web Unlocker validation",
+            value: validation.ok ? "ok" : `failed${validation.status ? ` (${validation.status})` : ""}: ${validation.detail}`,
+          });
+        }
+
+        if (result.config.cloudToken) {
+          const validation = await validateCloudToken(result.config.cloudToken);
+          validationRows.push({
+            label: "Cloud token validation",
+            value: validation.ok ? "ok" : `failed${validation.status ? ` (${validation.status})` : ""}: ${validation.detail}`,
+          });
+        }
+
+        if (validationRows.length > 0) {
+          printKeyValueRows(validationRows);
         }
       },
     );

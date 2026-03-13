@@ -21,9 +21,11 @@ async function exists(targetPath: string): Promise<boolean> {
   }
 }
 
-export async function resolveSelfCliInvocation(): Promise<SelfInvocation> {
+export async function resolveSelfCliInvocation(
+  env: NodeJS.ProcessEnv = process.env,
+): Promise<SelfInvocation> {
   const projectRoot = resolveProjectRoot();
-  const preferSource = process.env.GOLOGIN_WEB_ACCESS_USE_SOURCE_CLI === "1";
+  const preferSource = env.GOLOGIN_WEB_ACCESS_USE_SOURCE_CLI === "1";
   const distCli = path.join(projectRoot, "dist", "cli.js");
   const tsxCli = path.join(projectRoot, "node_modules", "tsx", "dist", "cli.mjs");
   const srcCli = path.join(projectRoot, "src", "cli.ts");
@@ -62,15 +64,16 @@ export async function runSelfCommandCapture(
     env?: NodeJS.ProcessEnv;
   } = {}
 ): Promise<{ exitCode: number; stdout: string; stderr: string }> {
-  const invocation = await resolveSelfCliInvocation();
+  const childEnv = {
+    ...process.env,
+    ...options.env
+  };
+  const invocation = await resolveSelfCliInvocation(childEnv);
 
   return new Promise((resolve, reject) => {
     const child = spawn(invocation.command, [...invocation.args, ...args], {
       cwd: options.cwd ?? invocation.cwd,
-      env: {
-        ...process.env,
-        ...options.env
-      },
+      env: childEnv,
       stdio: ["ignore", "pipe", "pipe"]
     });
 

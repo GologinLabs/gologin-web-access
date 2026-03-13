@@ -176,6 +176,31 @@ export async function scrapeJson(
   };
 }
 
+export async function validateWebUnlockerKey(
+  apiKey: string,
+): Promise<{ ok: true } | { ok: false; status?: number; detail: string }> {
+  try {
+    await scrapeRenderedHtml("https://example.com", apiKey, {
+      timeoutMs: 8_000,
+      maxRetries: 0,
+    });
+    return { ok: true };
+  } catch (error) {
+    if (error instanceof HttpError) {
+      return {
+        ok: false,
+        status: error.status,
+        detail: error.hint ?? error.message,
+      };
+    }
+
+    return {
+      ok: false,
+      detail: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
 function createWebUnlockerClient(apiKey: string): WebUnlockerClient {
   return new WebUnlockerClient({ apiKey });
 }

@@ -185,7 +185,15 @@ If you do not want to `source ~/.zprofile` in every shell, run:
 gologin-web-access config init
 ```
 
+Useful variants:
+
+```bash
+gologin-web-access config init --web-unlocker-api-key wu_... --cloud-token gl_...
+gologin-web-access config init --web-unlocker-key wu_... --cloud-token gl_...
+```
+
 That writes `~/.gologin-web-access/config.json` once and the CLI will keep reading it on later runs.
+By default `config init` also validates both keys immediately so you find bad credentials during setup instead of on the first real request. Use `--no-validate` only when you intentionally want an offline write.
 
 You can also write a minimal config file at `~/.gologin-web-access/config.json`:
 

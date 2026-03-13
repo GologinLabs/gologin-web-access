@@ -65,3 +65,17 @@ test("doctor reports whether the recommended two-key setup is complete", async (
   assert.match(check.detail, /GOLOGIN_WEB_UNLOCKER_API_KEY/);
   assert.match(check.detail, /GOLOGIN_CLOUD_TOKEN/);
 });
+
+test("config init accepts --web-unlocker-key alias", async () => {
+  const home = await mkdtemp(path.join(os.tmpdir(), "gologin-web-access-cli-"));
+  const result = await runSelfCommandCapture(["config", "init", "--web-unlocker-key", "wu_test_key", "--no-validate"], {
+    env: {
+      GOLOGIN_WEB_ACCESS_USE_SOURCE_CLI: "1",
+      HOME: home,
+    },
+  });
+
+  assert.equal(result.exitCode, 0);
+  assert.match(result.stdout, /Web Unlocker key/);
+  assert.doesNotMatch(result.stderr, /unknown option/i);
+});
