@@ -1,4 +1,4 @@
-import { loadConfig } from "./config";
+import { getRecommendedCredentialStatus, loadConfig } from "./config";
 import { getProfile } from "./lib/cloudApi";
 import { inspectAgentCli, isDaemonReachable } from "./lib/agentCli";
 import { formatDoctorChecks, printJson, printText } from "./lib/output";
@@ -9,6 +9,7 @@ export async function runDoctor(options: { json?: boolean } = {}): Promise<void>
   const checks: DoctorCheck[] = [];
   const daemonReachable = await isDaemonReachable(config.daemonPort);
   const agentCli = await inspectAgentCli();
+  const recommended = getRecommendedCredentialStatus(config);
 
   checks.push({
     name: "Web Unlocker API key",
@@ -20,6 +21,14 @@ export async function runDoctor(options: { json?: boolean } = {}): Promise<void>
     name: "Cloud Browser token",
     status: config.cloudToken ? "ok" : "warn",
     detail: config.cloudToken ? `configured via ${config.sources.cloudToken}` : "missing",
+  });
+
+  checks.push({
+    name: "Recommended full setup",
+    status: recommended.ready ? "ok" : "warn",
+    detail: recommended.ready
+      ? "both GOLOGIN_WEB_UNLOCKER_API_KEY and GOLOGIN_CLOUD_TOKEN are configured"
+      : `missing ${recommended.missing.join(" and ")}`,
   });
 
   checks.push({

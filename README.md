@@ -22,7 +22,7 @@ Gologin Web Access combines two existing product surfaces behind one CLI:
 - Cloud Browser
   Stateful interaction. Best when you need navigation, clicks, typing, screenshots, or multi-step flows that persist across commands.
 
-The point of the unified CLI is that both modes live in one product with one command surface and one config model, while still being honest about which credential powers which workflow.
+The point of the unified CLI is that both modes live in one product with one command surface and one config model, while still being honest about which credential powers which workflow. Recommended setup is still to configure both credentials up front so agents do not stop to ask for missing keys mid-task.
 
 ## Command Groups
 
@@ -164,6 +164,8 @@ This CLI uses two different Gologin credentials on purpose, because the underlyi
 - `GOLOGIN_DAEMON_PORT`
   Optional local daemon port for browser workflows.
 
+Recommended full setup for agents is to configure both `GOLOGIN_WEB_UNLOCKER_API_KEY` and `GOLOGIN_CLOUD_TOKEN` before starting work, even if the current task looks read-only or browser-only.
+
 Missing-key errors are command-group specific. Example:
 
 `Missing GOLOGIN_WEB_UNLOCKER_API_KEY. This is required for scraping commands like \`gologin-web-access scrape\`.`
@@ -213,7 +215,7 @@ gologin-web-access config show
 gologin-web-access doctor
 ```
 
-`doctor` reports the embedded Cloud Browser runtime bundled inside this package and whether the local daemon is reachable.
+`doctor` reports the embedded Cloud Browser runtime bundled inside this package, whether the local daemon is reachable, and whether the recommended two-key setup is complete.
 
 ## Install
 

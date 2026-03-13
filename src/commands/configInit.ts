@@ -4,7 +4,7 @@ import { printKeyValueRows, printText } from "../lib/output";
 
 export function buildConfigInitCommand(): Command {
   return new Command("init")
-    .description("Write ~/.gologin-web-access/config.json with current values or placeholders.")
+    .description("Write ~/.gologin-web-access/config.json with current values or placeholders. Recommended: persist both Web Unlocker and Cloud Browser credentials.")
     .option("--web-unlocker-api-key <key>", "Persist a Web Unlocker API key")
     .option("--cloud-token <token>", "Persist a Cloud Browser token")
     .option("--default-profile-id <id>", "Persist a default Gologin profile ID")
@@ -54,6 +54,12 @@ export function buildConfigInitCommand(): Command {
             value: String(result.config.daemonPort ?? DEFAULT_DAEMON_PORT),
           },
         ]);
+
+        if (!result.config.webUnlockerApiKey || !result.config.cloudToken) {
+          printText(
+            "Recommended next step: configure both GOLOGIN_WEB_UNLOCKER_API_KEY and GOLOGIN_CLOUD_TOKEN so agents can use scraping and browser flows without asking again.",
+          );
+        }
       },
     );
 }

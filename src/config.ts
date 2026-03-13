@@ -122,7 +122,38 @@ export function resolveProfileId(config: ResolvedConfig, explicitProfileId?: str
   return explicitProfileId || config.defaultProfileId;
 }
 
+export function getRecommendedCredentialStatus(config: ResolvedConfig): {
+  ready: boolean;
+  missing: string[];
+  detail: string;
+} {
+  const missing: string[] = [];
+
+  if (!config.webUnlockerApiKey) {
+    missing.push(ENV_NAMES.webUnlockerApiKey);
+  }
+
+  if (!config.cloudToken) {
+    missing.push(ENV_NAMES.cloudToken);
+  }
+
+  if (missing.length === 0) {
+    return {
+      ready: true,
+      missing,
+      detail: "complete (Web Unlocker + Cloud Browser configured)",
+    };
+  }
+
+  return {
+    ready: false,
+    missing,
+    detail: `incomplete - missing ${missing.join(" and ")}`,
+  };
+}
+
 export function getMaskedConfigRows(config: ResolvedConfig): Array<{ label: string; value: string }> {
+  const recommended = getRecommendedCredentialStatus(config);
   return [
     {
       label: "Config file",
@@ -135,6 +166,10 @@ export function getMaskedConfigRows(config: ResolvedConfig): Array<{ label: stri
     {
       label: ENV_NAMES.cloudToken,
       value: describeValue(config.cloudToken, config.sources.cloudToken),
+    },
+    {
+      label: "Recommended setup",
+      value: recommended.detail,
     },
     {
       label: ENV_NAMES.defaultProfileId,

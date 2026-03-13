@@ -21,7 +21,12 @@ export class MissingCredentialError extends CliError {
     super(
       `Missing ${envName}. This is required for ${commandGroup}.`,
       1,
-      `Set ${envName} in your environment or add it to ~/.gologin-web-access/config.json.`,
+      [
+        "This CLI only reads credentials from environment variables or ~/.gologin-web-access/config.json.",
+        "Recommended setup: configure both GOLOGIN_WEB_UNLOCKER_API_KEY and GOLOGIN_CLOUD_TOKEN up front so agents do not stop to ask again.",
+        `Set ${envName} in your environment or add it to ~/.gologin-web-access/config.json.`,
+        "Helpful commands: gologin-web-access config init, gologin-web-access config show, gologin-web-access doctor.",
+      ].join("\n"),
     );
   }
 }

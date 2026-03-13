@@ -4,7 +4,7 @@ import { printJson, printKeyValueRows } from "../lib/output";
 
 export function buildConfigShowCommand(): Command {
   return new Command("show")
-    .description("Show merged Gologin CLI configuration.")
+    .description("Show merged Gologin CLI configuration and whether the recommended two-key setup is complete.")
     .option("--json", "Print JSON output")
     .action(async (options: { json?: boolean }) => {
       const config = await loadConfig();

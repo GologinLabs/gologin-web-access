@@ -143,7 +143,7 @@ async function main(): Promise<void> {
 
   program
     .command("doctor")
-    .description("Inspect keys, profile configuration, and local daemon health.")
+    .description("Inspect both recommended keys, profile configuration, and local daemon health.")
     .option("--json", "Print JSON output")
     .action(async (options: { json?: boolean }) => {
       await runDoctor(options);
@@ -171,6 +171,7 @@ Command groups:
 Key model:
   ${"GOLOGIN_WEB_UNLOCKER_API_KEY"} powers scraping commands.
   ${"GOLOGIN_CLOUD_TOKEN"} powers browser commands.
+  Recommended setup: configure both keys up front, even if the current task only needs one path.
 `,
   );
 
