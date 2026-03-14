@@ -24,8 +24,8 @@ test("read command explains the recommended two-key setup when Web Unlocker is m
       GOLOGIN_WEB_ACCESS_USE_SOURCE_CLI: "1",
       GOLOGIN_WEB_UNLOCKER_API_KEY: "",
       GOLOGIN_WEBUNLOCKER_API_KEY: "",
-      GOLOGIN_CLOUD_TOKEN: "",
       GOLOGIN_TOKEN: "",
+      GOLOGIN_CLOUD_TOKEN: "",
       GOLOGIN_DEFAULT_PROFILE_ID: "",
       GOLOGIN_PROFILE_ID: "",
       HOME: home,
@@ -34,7 +34,7 @@ test("read command explains the recommended two-key setup when Web Unlocker is m
 
   assert.equal(result.exitCode, 1);
   assert.match(result.stderr, /Missing GOLOGIN_WEB_UNLOCKER_API_KEY/);
-  assert.match(result.stderr, /configure both GOLOGIN_WEB_UNLOCKER_API_KEY and GOLOGIN_CLOUD_TOKEN/i);
+  assert.match(result.stderr, /configure both GOLOGIN_WEB_UNLOCKER_API_KEY and GOLOGIN_TOKEN/i);
   assert.match(result.stderr, /config init/i);
   assert.match(result.stderr, /config show/i);
   assert.match(result.stderr, /doctor/i);
@@ -47,8 +47,8 @@ test("doctor reports whether the recommended two-key setup is complete", async (
       GOLOGIN_WEB_ACCESS_USE_SOURCE_CLI: "1",
       GOLOGIN_WEB_UNLOCKER_API_KEY: "",
       GOLOGIN_WEBUNLOCKER_API_KEY: "",
-      GOLOGIN_CLOUD_TOKEN: "",
       GOLOGIN_TOKEN: "",
+      GOLOGIN_CLOUD_TOKEN: "",
       GOLOGIN_DEFAULT_PROFILE_ID: "",
       GOLOGIN_PROFILE_ID: "",
       HOME: home,
@@ -63,7 +63,7 @@ test("doctor reports whether the recommended two-key setup is complete", async (
   assert.ok(check);
   assert.equal(check.status, "warn");
   assert.match(check.detail, /GOLOGIN_WEB_UNLOCKER_API_KEY/);
-  assert.match(check.detail, /GOLOGIN_CLOUD_TOKEN/);
+  assert.match(check.detail, /GOLOGIN_TOKEN/);
 });
 
 test("config init accepts --web-unlocker-key alias", async () => {
@@ -77,5 +77,19 @@ test("config init accepts --web-unlocker-key alias", async () => {
 
   assert.equal(result.exitCode, 0);
   assert.match(result.stdout, /Web Unlocker key/);
+  assert.doesNotMatch(result.stderr, /unknown option/i);
+});
+
+test("config init accepts --token as the canonical GoLogin credential flag", async () => {
+  const home = await mkdtemp(path.join(os.tmpdir(), "gologin-web-access-cli-"));
+  const result = await runSelfCommandCapture(["config", "init", "--token", "gl_test_token", "--no-validate"], {
+    env: {
+      GOLOGIN_WEB_ACCESS_USE_SOURCE_CLI: "1",
+      HOME: home,
+    },
+  });
+
+  assert.equal(result.exitCode, 0);
+  assert.match(result.stdout, /GoLogin token/);
   assert.doesNotMatch(result.stderr, /unknown option/i);
 });

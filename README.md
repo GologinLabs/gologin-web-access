@@ -153,18 +153,18 @@ If the browser surface grows substantially later, a nested namespace may become 
 
 ## Credentials And Config
 
-This CLI uses two different Gologin credentials on purpose, because the underlying products are different.
+This CLI uses two different GoLogin credentials on purpose, because the underlying products are different.
 
 - `GOLOGIN_WEB_UNLOCKER_API_KEY`
   Required for Scraping / Read commands.
-- `GOLOGIN_CLOUD_TOKEN`
+- `GOLOGIN_TOKEN`
   Required for `gologin-web-access open` and for profile validation in `gologin-web-access doctor`.
 - `GOLOGIN_DEFAULT_PROFILE_ID`
   Optional default profile for browser flows.
 - `GOLOGIN_DAEMON_PORT`
   Optional local daemon port for browser workflows.
 
-Recommended full setup for agents is to configure both `GOLOGIN_WEB_UNLOCKER_API_KEY` and `GOLOGIN_CLOUD_TOKEN` before starting work, even if the current task looks read-only or browser-only.
+Recommended full setup for agents is to configure both `GOLOGIN_WEB_UNLOCKER_API_KEY` and `GOLOGIN_TOKEN` before starting work, even if the current task looks read-only or browser-only.
 
 Missing-key errors are command-group specific. Example:
 
@@ -174,7 +174,7 @@ Environment variables are the primary configuration mechanism:
 
 ```bash
 export GOLOGIN_WEB_UNLOCKER_API_KEY="wu_..."
-export GOLOGIN_CLOUD_TOKEN="gl_..."
+export GOLOGIN_TOKEN="gl_..."
 export GOLOGIN_DEFAULT_PROFILE_ID="profile_123"
 export GOLOGIN_DAEMON_PORT="4590"
 ```
@@ -188,8 +188,8 @@ gologin-web-access config init
 Useful variants:
 
 ```bash
-gologin-web-access config init --web-unlocker-api-key wu_... --cloud-token gl_...
-gologin-web-access config init --web-unlocker-key wu_... --cloud-token gl_...
+gologin-web-access config init --web-unlocker-api-key wu_... --token gl_...
+gologin-web-access config init --web-unlocker-key wu_... --token gl_...
 ```
 
 That writes `~/.gologin-web-access/config.json` once and the CLI will keep reading it on later runs.
@@ -211,7 +211,7 @@ Gologin Web Access will also read the older path `~/.gologin-web/config.json` if
 Backward-compatible aliases are also accepted for existing setups:
 
 - `GOLOGIN_WEBUNLOCKER_API_KEY`
-- `GOLOGIN_TOKEN`
+- `GOLOGIN_CLOUD_TOKEN`
 - `GOLOGIN_PROFILE_ID`
 
 Useful config commands:
@@ -259,7 +259,7 @@ gologin-web-access parse-document ./example.pdf
 ### Interact With A Site
 
 ```bash
-export GOLOGIN_CLOUD_TOKEN="gl_..."
+export GOLOGIN_TOKEN="gl_..."
 export GOLOGIN_DEFAULT_PROFILE_ID="profile_123"
 
 gologin-web-access open https://example.com
@@ -280,7 +280,7 @@ gologin-web-access close
 ### Search In A Real Browser
 
 ```bash
-export GOLOGIN_CLOUD_TOKEN="gl_..."
+export GOLOGIN_TOKEN="gl_..."
 
 gologin-web-access search-browser "gologin antidetect browser"
 gologin-web-access snapshot -i

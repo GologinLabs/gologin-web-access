@@ -18,7 +18,7 @@ export async function runDoctor(options: { json?: boolean } = {}): Promise<void>
   });
 
   checks.push({
-    name: "Cloud Browser token",
+    name: "GoLogin token",
     status: config.cloudToken ? "ok" : "warn",
     detail: config.cloudToken ? `configured via ${config.sources.cloudToken}` : "missing",
   });
@@ -27,7 +27,7 @@ export async function runDoctor(options: { json?: boolean } = {}): Promise<void>
     name: "Recommended full setup",
     status: recommended.ready ? "ok" : "warn",
     detail: recommended.ready
-      ? "both GOLOGIN_WEB_UNLOCKER_API_KEY and GOLOGIN_CLOUD_TOKEN are configured"
+      ? "both GOLOGIN_WEB_UNLOCKER_API_KEY and GOLOGIN_TOKEN are configured"
       : `missing ${recommended.missing.join(" and ")}`,
   });
 
@@ -49,7 +49,7 @@ export async function runDoctor(options: { json?: boolean } = {}): Promise<void>
     checks.push({
       name: "Default profile",
       status: "warn",
-      detail: `${config.defaultProfileId} configured, but Cloud Browser token is missing so existence could not be verified`,
+      detail: `${config.defaultProfileId} configured, but GOLOGIN_TOKEN is missing so existence could not be verified`,
     });
   } else {
     try {

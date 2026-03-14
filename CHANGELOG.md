@@ -14,6 +14,6 @@ Highlights:
 - Unified CLI entry point for Gologin Web Unlocker and Gologin Cloud Browser workflows
 - Scraping commands: `scrape`, `scrape-markdown`, `scrape-text`, `scrape-json`, `batch-scrape`
 - Browser commands: `open`, `snapshot`, `click`, `type`, `screenshot`, `close`, `sessions`, `current`
-- Clear two-key configuration model with `GOLOGIN_WEB_UNLOCKER_API_KEY` and `GOLOGIN_CLOUD_TOKEN`
+- Clear two-key configuration model with `GOLOGIN_WEB_UNLOCKER_API_KEY` and `GOLOGIN_TOKEN`
 - `doctor`, `config show`, and `config init` to reduce setup friction
 - Compatibility support for legacy env names used by existing Gologin tools

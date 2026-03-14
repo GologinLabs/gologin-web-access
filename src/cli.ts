@@ -170,7 +170,7 @@ Command groups:
 
 Key model:
   ${"GOLOGIN_WEB_UNLOCKER_API_KEY"} powers scraping commands.
-  ${"GOLOGIN_CLOUD_TOKEN"} powers browser commands.
+  ${"GOLOGIN_TOKEN"} powers browser commands.
   Recommended setup: configure both keys up front, even if the current task only needs one path.
 `,
   );

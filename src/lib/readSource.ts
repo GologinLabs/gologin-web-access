@@ -144,7 +144,7 @@ export async function readRenderedHtmlContent(
       renderSource: "unlocker",
       fallbackAttempted: true,
       fallbackUsed: false,
-      fallbackReason: `${assessment.reason}; GOLOGIN_CLOUD_TOKEN is not configured`,
+      fallbackReason: `${assessment.reason}; GOLOGIN_TOKEN is not configured`,
       request: unlocker.request,
     };
   }
@@ -272,7 +272,7 @@ async function readReadableContent(
       renderSource: "unlocker",
       fallbackAttempted: true,
       fallbackUsed: false,
-      fallbackReason: `${assessment.reason}; GOLOGIN_CLOUD_TOKEN is not configured`,
+      fallbackReason: `${assessment.reason}; GOLOGIN_TOKEN is not configured`,
       request: unlocker.request,
     };
   }

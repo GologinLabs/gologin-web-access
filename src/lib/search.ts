@@ -438,7 +438,7 @@ async function searchViaBrowser(
   engine: SearchProvider,
 ): Promise<{ url: string; results: SearchResultItem[] }> {
   if (!config.cloudToken) {
-    throw new CliError("Missing GOLOGIN_CLOUD_TOKEN for browser search fallback.");
+    throw new CliError("Missing GOLOGIN_TOKEN for browser search fallback.");
   }
 
   const sessionId = `search-${randomUUID()}`;
