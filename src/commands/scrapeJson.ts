@@ -29,6 +29,9 @@ export function buildScrapeJsonCommand(): Command {
         profile: options.profile,
         request: normalizeUnlockerRequestOptions(options),
       });
+      if (envelope.warning) {
+        process.stderr.write(`${envelope.warning}\n`);
+      }
       printJson(envelope);
     }),
     ),

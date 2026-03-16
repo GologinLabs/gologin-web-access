@@ -19,6 +19,8 @@ export interface StructuredScrapeEnvelope {
   fallbackAttempted: boolean;
   fallbackUsed: boolean;
   fallbackReason?: string;
+  browserRecommended?: boolean;
+  warning?: string;
   request: ScrapeRequestMeta;
   data: ScrapeJsonData;
 }
@@ -40,6 +42,7 @@ export async function scrapeStructuredJson(
   let fallbackAttempted = false;
   let fallbackUsed = false;
   let fallbackReason: string | undefined;
+  let { browserRecommended, warning } = buildStructuredFallbackAdvisory(data);
 
   if (fallbackMode === "browser" && shouldUseBrowserFallback(data)) {
     fallbackAttempted = true;
@@ -53,6 +56,8 @@ export async function scrapeStructuredJson(
       renderSource = "browser";
       fallbackUsed = true;
       fallbackReason = "unlocker structured data looked incomplete";
+      browserRecommended = false;
+      warning = undefined;
     } else {
       fallbackReason = "browser fallback did not improve structured output";
     }
@@ -63,6 +68,8 @@ export async function scrapeStructuredJson(
     fallbackAttempted,
     fallbackUsed,
     fallbackReason,
+    browserRecommended,
+    warning,
   });
 }
 
@@ -75,6 +82,8 @@ export function makeStructuredScrapeEnvelope(
     fallbackAttempted?: boolean;
     fallbackUsed?: boolean;
     fallbackReason?: string;
+    browserRecommended?: boolean;
+    warning?: string;
   } = {},
 ): StructuredScrapeEnvelope {
   return {
@@ -84,6 +93,8 @@ export function makeStructuredScrapeEnvelope(
     fallbackAttempted: options.fallbackAttempted ?? false,
     fallbackUsed: options.fallbackUsed ?? false,
     fallbackReason: options.fallbackReason,
+    browserRecommended: options.browserRecommended,
+    warning: options.warning,
     request: result.request,
     data,
   };
@@ -108,6 +119,19 @@ export function shouldUseBrowserFallback(data: ScrapeJsonData): boolean {
   }
 
   return looksSuspiciousHeadingText(firstH1);
+}
+
+export function buildStructuredFallbackAdvisory(
+  data: ScrapeJsonData
+): { browserRecommended: boolean; warning?: string } {
+  if (!shouldUseBrowserFallback(data)) {
+    return { browserRecommended: false };
+  }
+
+  return {
+    browserRecommended: true,
+    warning: "Structured output looks incomplete or client-rendered. Retry with --fallback browser or use read/open for rendered DOM.",
+  };
 }
 
 function looksSuspiciousHeadingText(value: string): boolean {

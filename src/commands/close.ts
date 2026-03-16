@@ -6,9 +6,13 @@ export function buildCloseCommand(): Command {
   return new Command("close")
     .description("Close the current browser session or a specific session.")
     .option("--session <id>", "Session ID. Defaults to the current session.")
-    .action(async (options: { session?: string }) => {
+    .option("--all", "Close every tracked browser session in the current daemon.")
+    .action(async (options: { session?: string; all?: boolean }) => {
       const config = await loadConfig();
       const args = ["close"];
+      if (options.all) {
+        args.push("--all");
+      }
       if (options.session) {
         args.push("--session", options.session);
       }
