@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import { resolveProfileId } from "../config";
 import { runAgentCommandCapture } from "./agentCli";
-import { CliError } from "./errors";
+import { createBrowserCommandError } from "./errors";
 import type { ResolvedConfig } from "./types";
 
 export interface BrowserReadableContent {
@@ -76,7 +76,7 @@ function ensureBrowserCommandOk(
   }
 
   const message = response.stderr.trim() || response.stdout.trim() || `Browser command failed for ${url}`;
-  throw new CliError(`Browser read ${step} failed.`, 1, message);
+  throw createBrowserCommandError(step, url, message);
 }
 
 function buildReadableExtractionExpression(): string {

@@ -1,4 +1,5 @@
 import { requireCloudToken } from "../config";
+import { CliError } from "./errors";
 import { scrapeJsonViaBrowser } from "./browserStructured";
 import type { ResolvedConfig } from "./types";
 import {
@@ -23,6 +24,39 @@ export interface StructuredScrapeEnvelope {
   warning?: string;
   request: ScrapeRequestMeta;
   data: ScrapeJsonData;
+}
+
+class StructuredBlockedPageError extends CliError {
+  public readonly status: number | null | undefined;
+  public readonly request: ScrapeRequestMeta;
+
+  public constructor(
+    url: string,
+    status: number | null | undefined,
+    request: ScrapeRequestMeta,
+    reason: string,
+    options: {
+      fallbackAttempted: boolean;
+      fallbackUsed: boolean;
+      fallbackReason?: string;
+    },
+  ) {
+    super(
+      `Structured scrape returned a likely blocked or challenge page for ${url}.`,
+      1,
+      [
+        `Reason: ${reason}.`,
+        options.fallbackAttempted
+          ? options.fallbackUsed
+            ? "Browser fallback was used but the page still looked blocked."
+            : `Browser fallback was attempted but not used. ${options.fallbackReason ?? "It did not improve the result."}`
+          : "Retry with --fallback browser, use read --source browser, or switch to gologin-local-agent-browser for full rendered DOM.",
+      ].join("\n"),
+      "BLOCKED_PAGE",
+    );
+    this.status = status;
+    this.request = request;
+  }
 }
 
 export async function scrapeStructuredJson(
@@ -61,6 +95,15 @@ export async function scrapeStructuredJson(
     } else {
       fallbackReason = "browser fallback did not improve structured output";
     }
+  }
+
+  const blockedReason = detectStructuredBlockReason(data);
+  if (blockedReason) {
+    throw new StructuredBlockedPageError(url, result.status, result.request, blockedReason, {
+      fallbackAttempted,
+      fallbackUsed,
+      fallbackReason,
+    });
   }
 
   return makeStructuredScrapeEnvelope(url, result, data, {
@@ -113,6 +156,10 @@ export function normalizeStructuredFallbackMode(value: string | undefined): Stru
 }
 
 export function shouldUseBrowserFallback(data: ScrapeJsonData): boolean {
+  if (detectStructuredBlockReason(data)) {
+    return true;
+  }
+
   const firstH1 = data.headingsByLevel.h1[0];
   if (!firstH1) {
     return true;
@@ -124,6 +171,14 @@ export function shouldUseBrowserFallback(data: ScrapeJsonData): boolean {
 export function buildStructuredFallbackAdvisory(
   data: ScrapeJsonData
 ): { browserRecommended: boolean; warning?: string } {
+  const blockedReason = detectStructuredBlockReason(data);
+  if (blockedReason) {
+    return {
+      browserRecommended: true,
+      warning: `Structured output looks blocked or challenge-gated (${blockedReason}). Retry with --fallback browser or use a rendered browser path.`,
+    };
+  }
+
   if (!shouldUseBrowserFallback(data)) {
     return { browserRecommended: false };
   }
@@ -139,6 +194,12 @@ function looksSuspiciousHeadingText(value: string): boolean {
 }
 
 function isBrowserDataBetter(current: ScrapeJsonData, candidate: ScrapeJsonData): boolean {
+  const currentBlocked = Boolean(detectStructuredBlockReason(current));
+  const candidateBlocked = Boolean(detectStructuredBlockReason(candidate));
+  if (currentBlocked !== candidateBlocked) {
+    return currentBlocked && !candidateBlocked;
+  }
+
   if (candidate.headingsByLevel.h1.length > current.headingsByLevel.h1.length) {
     return true;
   }
@@ -152,4 +213,44 @@ function isBrowserDataBetter(current: ScrapeJsonData, candidate: ScrapeJsonData)
   }
 
   return false;
+}
+
+export function detectStructuredBlockReason(data: ScrapeJsonData): string | undefined {
+  const candidates = [
+    data.title,
+    data.description,
+    ...data.headingsByLevel.h1.slice(0, 2),
+    ...data.headingsByLevel.h2.slice(0, 2),
+  ].filter((value): value is string => Boolean(value && value.trim()));
+
+  for (const candidate of candidates) {
+    const reason = classifyBlockedText(candidate);
+    if (reason) {
+      return reason;
+    }
+  }
+
+  return undefined;
+}
+
+function classifyBlockedText(value: string): string | undefined {
+  const text = value.trim();
+
+  if (
+    /(verify you are human|verify you are a human|are you human|captcha|security check|attention required|just a moment|checking your browser|enable javascript and cookies to continue|one more step)/i.test(
+      text,
+    )
+  ) {
+    return "challenge markers matched the page title or heading";
+  }
+
+  if (
+    /(access denied|forbidden|blocked request|request blocked|request unsuccessful|temporarily blocked|temporarily unavailable|you have been blocked|access to this page has been denied)/i.test(
+      text,
+    )
+  ) {
+    return "blocked-page markers matched the page title or heading";
+  }
+
+  return undefined;
 }

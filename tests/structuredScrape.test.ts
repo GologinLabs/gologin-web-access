@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildStructuredFallbackAdvisory, shouldUseBrowserFallback } from "../src/lib/structuredScrape";
+import {
+  buildStructuredFallbackAdvisory,
+  detectStructuredBlockReason,
+  shouldUseBrowserFallback,
+} from "../src/lib/structuredScrape";
 import type { ScrapeJsonData } from "../src/lib/unlocker";
 
 function makeData(overrides: Partial<ScrapeJsonData> = {}): ScrapeJsonData {
@@ -50,4 +54,43 @@ test("buildStructuredFallbackAdvisory stays quiet for healthy structured output"
   );
   assert.equal(advisory.browserRecommended, false);
   assert.equal(advisory.warning, undefined);
+});
+
+test("detectStructuredBlockReason flags challenge pages", () => {
+  const reason = detectStructuredBlockReason(
+    makeData({
+      title: "Just a moment...",
+      headings: ["Verify you are human"],
+      headingsByLevel: {
+        h1: ["Verify you are human"],
+        h2: [],
+        h3: [],
+        h4: [],
+        h5: [],
+        h6: [],
+      },
+    }),
+  );
+
+  assert.match(reason ?? "", /challenge|blocked/i);
+});
+
+test("buildStructuredFallbackAdvisory explains blocked structured output", () => {
+  const advisory = buildStructuredFallbackAdvisory(
+    makeData({
+      title: "Access denied",
+      headings: ["Access denied"],
+      headingsByLevel: {
+        h1: ["Access denied"],
+        h2: [],
+        h3: [],
+        h4: [],
+        h5: [],
+        h6: [],
+      },
+    }),
+  );
+
+  assert.equal(advisory.browserRecommended, true);
+  assert.match(advisory.warning ?? "", /blocked|challenge/i);
 });

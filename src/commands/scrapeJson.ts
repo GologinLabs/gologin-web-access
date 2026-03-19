@@ -29,6 +29,12 @@ export function buildScrapeJsonCommand(): Command {
         profile: options.profile,
         request: normalizeUnlockerRequestOptions(options),
       });
+      if (envelope.fallbackAttempted) {
+        const fallbackStatus = envelope.fallbackUsed
+          ? "Browser fallback succeeded and replaced the unlocker result."
+          : `Browser fallback was attempted but not used. ${envelope.fallbackReason ?? "It did not improve the structured output."}`;
+        process.stderr.write(`${fallbackStatus}\n`);
+      }
       if (envelope.warning) {
         process.stderr.write(`${envelope.warning}\n`);
       }

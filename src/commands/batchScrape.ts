@@ -1,11 +1,13 @@
+import { promises as fs } from "fs";
+import path from "path";
 import { Command } from "commander";
 import { loadConfig, requireWebUnlockerKey } from "../config";
-import { printJson } from "../lib/output";
+import { printText } from "../lib/output";
 import { readHtmlContent, readMarkdownContent, readTextContent, normalizeReadSourceMode } from "../lib/readSource";
 import { normalizeStructuredFallbackMode, scrapeStructuredJson } from "../lib/structuredScrape";
 import { ScrapeFormat } from "../lib/types";
 import { ScrapeRequestOptions, scrapeMarkdown, scrapeRenderedHtml, scrapeText } from "../lib/unlocker";
-import { addProfileOption, addUnlockerRequestOptions, normalizeUnlockerRequestOptions } from "./shared";
+import { addProfileOption, addUnlockerRequestOptions, normalizeUnlockerRequestOptions, resolveOutputPath } from "./shared";
 
 export function buildBatchScrapeCommand(): Command {
   return addProfileOption(
@@ -18,7 +20,9 @@ export function buildBatchScrapeCommand(): Command {
         .option("--fallback <mode>", "Structured scrape fallback: none or browser", "none")
         .option("--source <source>", "Read source for --only-main-content mode: auto, unlocker, or browser", "auto")
         .option("--only-main-content", "For html, markdown, or text formats, isolate the most readable content block per page")
+        .option("--output <path>", "Write the full batch result JSON to a file")
         .option("--summary", "Print one-line summary stats to stderr after the JSON output")
+        .option("--strict", "Exit non-zero if any URL in the batch fails")
         .action(
           async (
             urls: string[],
@@ -33,6 +37,8 @@ export function buildBatchScrapeCommand(): Command {
               backoffMs?: string;
               timeoutMs?: string;
               summary?: boolean;
+              output?: string;
+              strict?: boolean;
             },
           ) => {
             const config = await loadConfig();
@@ -63,20 +69,32 @@ export function buildBatchScrapeCommand(): Command {
                   ok: false,
                   format,
                   error: error instanceof Error ? error.message : "Unknown error",
+                  code: extractErrorCode(error),
                   status: extractStatusCode(error),
                   request,
                 };
               }
             });
 
-            printJson(results);
+            const payload = `${JSON.stringify(results, null, 2)}\n`;
+            if (options.output) {
+              const outputPath = resolveOutputPath(options.output);
+              await fs.mkdir(path.dirname(outputPath), { recursive: true });
+              await fs.writeFile(outputPath, payload, "utf8");
+              printText(outputPath);
+            } else {
+              printText(payload);
+              if (shouldWarnAboutLargeBatchOutput(payload)) {
+                process.stderr.write(
+                  "Batch output is large. If your shell or agent truncates stdout, rerun with --output <path> to keep the full JSON.\n",
+                );
+              }
+            }
             if (options.summary) {
               process.stderr.write(formatBatchSummary(results) + "\n");
             }
 
-            if (results.some((result) => !result.ok)) {
-              process.exitCode = 1;
-            }
+            process.exitCode = resolveBatchScrapeExitCode(results, Boolean(options.strict));
           }),
     ),
   );
@@ -167,6 +185,23 @@ function formatBatchSummary(results: Array<{ ok: boolean }>): string {
   return `Summary: ${requested} requested, ${ok} ok, ${failed} failed.`;
 }
 
+export function resolveBatchScrapeExitCode(results: Array<{ ok: boolean }>, strict: boolean): number {
+  const okCount = results.filter((result) => result.ok).length;
+  if (okCount === 0) {
+    return 1;
+  }
+
+  if (strict && okCount !== results.length) {
+    return 1;
+  }
+
+  return 0;
+}
+
+export function shouldWarnAboutLargeBatchOutput(payload: string): boolean {
+  return payload.length >= 100_000;
+}
+
 function extractStatusCode(error: unknown): number | undefined {
   if (
     typeof error === "object" &&
@@ -188,6 +223,19 @@ function extractRequestMeta(error: unknown): unknown {
     typeof (error as { request?: unknown }).request === "object"
   ) {
     return (error as { request: unknown }).request;
+  }
+
+  return undefined;
+}
+
+function extractErrorCode(error: unknown): string | undefined {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    typeof (error as { code?: unknown }).code === "string"
+  ) {
+    return (error as { code: string }).code;
   }
 
   return undefined;

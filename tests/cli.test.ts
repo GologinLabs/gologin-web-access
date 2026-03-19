@@ -4,6 +4,7 @@ import path from "node:path";
 import { mkdtemp } from "node:fs/promises";
 import test from "node:test";
 
+import { resolveBatchScrapeExitCode, shouldWarnAboutLargeBatchOutput } from "../src/commands/batchScrape";
 import { runSelfCommandCapture } from "../src/lib/selfCli";
 
 test("version command prints the CLI version", async () => {
@@ -92,4 +93,48 @@ test("config init accepts --token as the canonical GoLogin credential flag", asy
   assert.equal(result.exitCode, 0);
   assert.match(result.stdout, /GoLogin token/);
   assert.doesNotMatch(result.stderr, /unknown option/i);
+});
+
+test("batch-scrape partial success stays zero exit by default", () => {
+  assert.equal(
+    resolveBatchScrapeExitCode(
+      [
+        { ok: true },
+        { ok: false },
+      ],
+      false,
+    ),
+    0,
+  );
+});
+
+test("batch-scrape strict mode fails on partial success", () => {
+  assert.equal(
+    resolveBatchScrapeExitCode(
+      [
+        { ok: true },
+        { ok: false },
+      ],
+      true,
+    ),
+    1,
+  );
+});
+
+test("batch-scrape still fails when every item fails", () => {
+  assert.equal(
+    resolveBatchScrapeExitCode(
+      [
+        { ok: false },
+        { ok: false },
+      ],
+      false,
+    ),
+    1,
+  );
+});
+
+test("batch-scrape warns when stdout payload is large enough to risk truncation", () => {
+  assert.equal(shouldWarnAboutLargeBatchOutput("x".repeat(100_000)), true);
+  assert.equal(shouldWarnAboutLargeBatchOutput("x".repeat(10_000)), false);
 });

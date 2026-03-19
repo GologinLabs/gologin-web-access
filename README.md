@@ -26,6 +26,13 @@ The point of the unified CLI is that both modes live in one product with one com
 
 ## Command Groups
 
+### Quick Picks
+
+- `read` for "read this docs page/article" or "tell me what is on this page"
+- `scrape-text` for plain text from one known page when you do not need headings/links metadata
+- `scrape-json` for structured title, description, headings, and links from one known page
+- `batch-scrape` for many known URLs at once; add `--output <path>` when the JSON may be large and add `--strict` only if partial success should fail the command
+
 ### Scraping / Read
 
 These commands use Gologin Web Unlocker:
@@ -35,7 +42,7 @@ These commands use Gologin Web Unlocker:
 - `gologin-web-access scrape-markdown <url> [--source auto|unlocker|browser]`
 - `gologin-web-access scrape-text <url> [--source auto|unlocker|browser]`
 - `gologin-web-access scrape-json <url> [--fallback none|browser]`
-- `gologin-web-access batch-scrape <url...> [--format html|markdown|text|json] [--fallback none|browser] [--source auto|unlocker|browser] [--only-main-content] [--retry <n>] [--backoff-ms <ms>] [--summary]`
+- `gologin-web-access batch-scrape <url...> [--format html|markdown|text|json] [--fallback none|browser] [--source auto|unlocker|browser] [--only-main-content] [--retry <n>] [--backoff-ms <ms>] [--summary] [--output <path>] [--strict]`
 - `gologin-web-access batch-extract <url...> --schema <schema.json> [--source auto|unlocker|browser] [--retry <n>] [--backoff-ms <ms>] [--summary] [--output <path>]`
 - `gologin-web-access search <query> [--limit <n>] [--country <cc>] [--language <lang>] [--source auto|unlocker|browser]`
 - `gologin-web-access map <url> [--limit <n>] [--max-depth <n>] [--concurrency <n>] [--strict]`
@@ -104,6 +111,9 @@ Use these when you need state, interaction, or multi-step browser flows.
 ## When To Use `scrape` vs `browser`
 
 - Use `scrape` commands when you need page content, extracted text, markdown, or simple structured output.
+- Use `read` as the default for docs and article reading when you want one high-level main-content command rather than choosing HTML/text/markdown yourself.
+- Use `scrape-text` when you already know you want plain text.
+- Use `scrape-json` when you want structured metadata and headings instead of full prose.
 - Use `search` when you need web discovery or SERP results before deciding what to scrape. It now tries multiple search paths automatically, validates that the response is a real SERP, and reuses a short local cache for repeated queries.
 - Use `map` when you need internal link discovery or a site inventory.
 - Use `crawl` when you need multi-page read-only extraction across a site.
@@ -299,7 +309,10 @@ gologin-web-access snapshot -i
 - `batch-scrape --only-main-content` lets markdown, text, and html batch runs use the same readable-content isolation path as `read`.
 - `crawl --only-main-content` uses the same readable-fragment extraction strategy for html, markdown, and text crawl output, but stays on the stateless unlocker path.
 - `batch-scrape --summary` prints a one-line success/failure summary to `stderr` after the JSON payload.
+- `batch-scrape` now returns exit code `0` on partial success by default and only fails the command when every URL failed. Add `--strict` if any single failed URL should make the whole batch exit non-zero.
+- `batch-scrape --output <path>` writes the full JSON to disk so shells and agent consoles cannot truncate a large payload silently.
 - `batch-scrape --format json` now returns the same structured scrape envelope as `scrape-json`, including `renderSource`, `fallbackAttempted`, `fallbackUsed`, and `request.attemptCount/retryCount/attempts`.
+- `scrape-json` now surfaces explicit `BLOCKED_PAGE` failures when structured output clearly matches a challenge or block page, instead of silently looking like a valid empty result.
 - `search` now returns `requestedLimit`, `returnedCount`, `warnings`, `cacheTtlMs`, and per-result `position`.
 - `search` may return fewer results than the requested `--limit` when the upstream SERP contains fewer valid results; inspect `returnedCount`, `warnings`, and `attempts`.
 - `change-track` now accepts `--retry`, `--backoff-ms`, and `--timeout-ms`, and JSON output includes request metadata.

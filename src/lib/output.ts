@@ -17,6 +17,9 @@ export function printError(error: CliError): void {
   if (error.message) {
     write(process.stderr, error.message);
   }
+  if (error.code) {
+    write(process.stderr, `Code: ${error.code}`);
+  }
   if (error.hint) {
     write(process.stderr, error.hint);
   }

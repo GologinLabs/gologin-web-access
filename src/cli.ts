@@ -163,6 +163,12 @@ async function main(): Promise<void> {
   program.addHelpText(
     "after",
     `
+Quick picks:
+  read          Best default for "read this docs page/article" and main-content extraction
+  scrape-text   Plain text from one known page when you do not need headings/links metadata
+  scrape-json   Structured title, description, headings, and links from one known page
+  batch-scrape  Fetch many known URLs at once; add --output <path> for large results and --strict only when partial success should fail the command
+
 Command groups:
   Scraping: gologin-web-access scrape|read|scrape-markdown|scrape-text|scrape-json|batch-scrape|batch-extract|search|map|crawl|crawl-start|crawl-status|crawl-result|crawl-errors|extract|change-track|batch-change-track|parse-document
   Browser:  gologin-web-access open|search-browser|scrape-screenshot|tabs|tabopen|tabfocus|tabclose|snapshot|click|dblclick|focus|type|fill|hover|select|check|uncheck|press|scroll|scrollintoview|wait|get|back|forward|reload|find|cookies|cookies-import|cookies-clear|storage-export|storage-import|storage-clear|eval|upload|pdf|screenshot|close|sessions|current

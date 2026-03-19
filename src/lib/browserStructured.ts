@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import { resolveProfileId } from "../config";
 import { runAgentCommandCapture } from "./agentCli";
-import { CliError } from "./errors";
+import { createBrowserCommandError } from "./errors";
 import type { ResolvedConfig } from "./types";
 import type { ScrapeJsonData } from "./unlocker";
 
@@ -46,7 +46,7 @@ function ensureBrowserCommandOk(
   }
 
   const message = response.stderr.trim() || response.stdout.trim() || `Browser command failed for ${url}`;
-  throw new CliError(`Browser structured extraction ${step} failed.`, 1, message);
+  throw createBrowserCommandError(step, url, message);
 }
 
 function buildStructuredExtractionExpression(): string {
