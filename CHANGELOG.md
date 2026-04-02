@@ -5,6 +5,12 @@
 - browser automation is now embedded directly in `gologin-web-access`, so one repo and one install contains both Web Unlocker and Cloud Browser flows
 - doctor now reports the embedded browser runtime source and version
 
+## 0.3.2 - 2026-04-03
+
+- added unified page outcome classification across `read`, `scrape-json`, and `batch-scrape`
+- structured and readable paths now distinguish `ok`, `empty`, `incomplete`, `authwall`, `challenge`, `blocked`, and `cookie_wall`
+- batch and extract-oriented flows now propagate next-step hints and fallback metadata more consistently for agents
+
 ## 0.1.0 - 2026-03-10
 
 Initial public release of Gologin Web Access.

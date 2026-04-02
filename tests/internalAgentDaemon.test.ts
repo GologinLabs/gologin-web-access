@@ -10,11 +10,11 @@ test("daemonMatchesExpected accepts matching daemon metadata", () => {
     pid: 123,
     transports: ["socket", "http"],
     projectRoot: "/repo/current",
-    version: "0.3.0",
+    version: "0.3.2",
     startedAt: "2026-03-12T17:00:00.000Z"
   };
 
-  assert.equal(daemonMatchesExpected(health, "/repo/current", "0.3.0"), true);
+  assert.equal(daemonMatchesExpected(health, "/repo/current", "0.3.2"), true);
 });
 
 test("daemonMatchesExpected rejects mismatched project roots", () => {
@@ -23,11 +23,11 @@ test("daemonMatchesExpected rejects mismatched project roots", () => {
     pid: 123,
     transports: ["socket", "http"],
     projectRoot: "/private/tmp/gologin-web-access",
-    version: "0.3.0",
+    version: "0.3.2",
     startedAt: "2026-03-12T17:00:00.000Z"
   };
 
-  assert.equal(daemonMatchesExpected(health, "/repo/current", "0.3.0"), false);
+  assert.equal(daemonMatchesExpected(health, "/repo/current", "0.3.2"), false);
 });
 
 test("daemonMatchesExpected falls back to process command for legacy daemons", () => {
@@ -41,7 +41,7 @@ test("daemonMatchesExpected falls back to process command for legacy daemons", (
     daemonMatchesExpected(
       health,
       "/repo/current",
-      "0.3.0",
+      "0.3.2",
       "node /repo/current/dist/internal-agent/daemon/server.js"
     ),
     true
@@ -50,7 +50,7 @@ test("daemonMatchesExpected falls back to process command for legacy daemons", (
     daemonMatchesExpected(
       health,
       "/repo/current",
-      "0.3.0",
+      "0.3.2",
       "node /private/tmp/gologin-web-access/dist/internal-agent/daemon/server.js"
     ),
     false
