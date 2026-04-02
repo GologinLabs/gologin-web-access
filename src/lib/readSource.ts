@@ -1,6 +1,7 @@
 import { load } from "cheerio";
 import { requireCloudToken } from "../config";
 import { scrapeReadableContentViaBrowser, scrapeRenderedHtmlViaBrowser } from "./browserRead";
+import { assessReadablePageOutcome, type NextActionHint, type PageOutcome } from "./pageOutcome";
 import type { ResolvedConfig } from "./types";
 import {
   htmlToMarkdown,
@@ -18,6 +19,10 @@ export interface ReadContentEnvelope {
   fallbackAttempted: boolean;
   fallbackUsed: boolean;
   fallbackReason?: string;
+  outcome: PageOutcome;
+  outcomeReason?: string;
+  nextActionHint?: NextActionHint;
+  warning?: string;
   request?: ScrapeRequestMeta;
 }
 
@@ -27,6 +32,10 @@ export interface RenderedHtmlEnvelope {
   fallbackAttempted: boolean;
   fallbackUsed: boolean;
   fallbackReason?: string;
+  outcome: PageOutcome;
+  outcomeReason?: string;
+  nextActionHint?: NextActionHint;
+  warning?: string;
   request?: ScrapeRequestMeta;
 }
 
@@ -112,6 +121,7 @@ export async function readRenderedHtmlContent(
       renderSource: "browser",
       fallbackAttempted: false,
       fallbackUsed: false,
+      outcome: "ok",
     };
   }
 
@@ -122,18 +132,27 @@ export async function readRenderedHtmlContent(
       renderSource: "unlocker",
       fallbackAttempted: false,
       fallbackUsed: false,
+      outcome: "ok",
       request: unlocker.request,
     };
   }
 
   const unlockerText = htmlToText(unlocker.content);
   const assessment = assessReadableContent(unlocker.content, unlockerText);
+  const outcomeAssessment = assessReadablePageOutcome(unlocker.content, unlockerText, {
+    looksIncomplete: assessment.shouldFallback,
+    incompleteReason: assessment.reason,
+  });
   if (!assessment.shouldFallback) {
     return {
       html: unlocker.content,
       renderSource: "unlocker",
       fallbackAttempted: false,
       fallbackUsed: false,
+      outcome: outcomeAssessment.outcome,
+      outcomeReason: outcomeAssessment.reason,
+      nextActionHint: outcomeAssessment.nextActionHint,
+      warning: outcomeAssessment.warning,
       request: unlocker.request,
     };
   }
@@ -145,6 +164,10 @@ export async function readRenderedHtmlContent(
       fallbackAttempted: true,
       fallbackUsed: false,
       fallbackReason: `${assessment.reason}; GOLOGIN_TOKEN is not configured`,
+      outcome: outcomeAssessment.outcome,
+      outcomeReason: outcomeAssessment.reason,
+      nextActionHint: outcomeAssessment.nextActionHint,
+      warning: outcomeAssessment.warning,
       request: unlocker.request,
     };
   }
@@ -158,6 +181,7 @@ export async function readRenderedHtmlContent(
     fallbackAttempted: true,
     fallbackUsed: true,
     fallbackReason: assessment.reason,
+    outcome: "ok",
     request: unlocker.request,
   };
 }
@@ -238,12 +262,18 @@ async function readReadableContent(
       renderSource: "browser",
       fallbackAttempted: false,
       fallbackUsed: false,
+      outcome: "ok",
     };
   }
 
   const unlocker = await scrapeRenderedHtml(url, apiKey, options.request);
   const readable = extractReadableSegmentFromHtml(unlocker.content);
   const unlockerContent = formatReadableContent(options.format, readable.html, readable.text);
+  const assessment = assessReadableContent(unlocker.content, unlockerContent);
+  const outcomeAssessment = assessReadablePageOutcome(unlocker.content, unlockerContent, {
+    looksIncomplete: assessment.shouldFallback,
+    incompleteReason: assessment.reason,
+  });
 
   if (source === "unlocker") {
     return {
@@ -251,17 +281,24 @@ async function readReadableContent(
       renderSource: "unlocker",
       fallbackAttempted: false,
       fallbackUsed: false,
+      outcome: outcomeAssessment.outcome,
+      outcomeReason: outcomeAssessment.reason,
+      nextActionHint: outcomeAssessment.nextActionHint,
+      warning: outcomeAssessment.warning,
       request: unlocker.request,
     };
   }
 
-  const assessment = assessReadableContent(unlocker.content, unlockerContent);
   if (!assessment.shouldFallback) {
     return {
       content: unlockerContent,
       renderSource: "unlocker",
       fallbackAttempted: false,
       fallbackUsed: false,
+      outcome: outcomeAssessment.outcome,
+      outcomeReason: outcomeAssessment.reason,
+      nextActionHint: outcomeAssessment.nextActionHint,
+      warning: outcomeAssessment.warning,
       request: unlocker.request,
     };
   }
@@ -273,6 +310,10 @@ async function readReadableContent(
       fallbackAttempted: true,
       fallbackUsed: false,
       fallbackReason: `${assessment.reason}; GOLOGIN_TOKEN is not configured`,
+      outcome: outcomeAssessment.outcome,
+      outcomeReason: outcomeAssessment.reason,
+      nextActionHint: outcomeAssessment.nextActionHint,
+      warning: outcomeAssessment.warning,
       request: unlocker.request,
     };
   }
@@ -289,6 +330,10 @@ async function readReadableContent(
       fallbackAttempted: true,
       fallbackUsed: false,
       fallbackReason: "Browser fallback did not improve readable output",
+      outcome: outcomeAssessment.outcome,
+      outcomeReason: outcomeAssessment.reason,
+      nextActionHint: outcomeAssessment.nextActionHint,
+      warning: outcomeAssessment.warning,
       request: unlocker.request,
     };
   }
@@ -299,6 +344,7 @@ async function readReadableContent(
     fallbackAttempted: true,
     fallbackUsed: true,
     fallbackReason: assessment.reason,
+    outcome: "ok",
     request: unlocker.request,
   };
 }

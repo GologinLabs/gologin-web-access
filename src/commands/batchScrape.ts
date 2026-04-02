@@ -2,6 +2,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import { Command } from "commander";
 import { loadConfig, requireWebUnlockerKey } from "../config";
+import type { NextActionHint, PageOutcome } from "../lib/pageOutcome";
 import { printText } from "../lib/output";
 import { readHtmlContent, readMarkdownContent, readTextContent, normalizeReadSourceMode } from "../lib/readSource";
 import { normalizeStructuredFallbackMode, scrapeStructuredJson } from "../lib/structuredScrape";
@@ -60,7 +61,16 @@ export function buildBatchScrapeCommand(): Command {
                   url,
                   ok: true,
                   format,
-                  output,
+                  output: output.output,
+                  outcome: output.outcome,
+                  outcomeReason: output.outcomeReason,
+                  nextActionHint: output.nextActionHint,
+                  renderSource: output.renderSource,
+                  fallbackAttempted: output.fallbackAttempted,
+                  fallbackUsed: output.fallbackUsed,
+                  fallbackReason: output.fallbackReason,
+                  warning: output.warning,
+                  request: output.request,
                 };
               } catch (error) {
                 const request = extractRequestMeta(error);
@@ -71,6 +81,8 @@ export function buildBatchScrapeCommand(): Command {
                   error: error instanceof Error ? error.message : "Unknown error",
                   code: extractErrorCode(error),
                   status: extractStatusCode(error),
+                  outcome: extractOutcome(error),
+                  nextActionHint: extractNextActionHint(error),
                   request,
                 };
               }
@@ -120,7 +132,18 @@ async function formatOutput(
     onlyMainContent: boolean;
     profile?: string;
   },
-): Promise<unknown> {
+): Promise<{
+  output: unknown;
+  outcome?: PageOutcome;
+  outcomeReason?: string;
+  nextActionHint?: NextActionHint;
+  renderSource?: "unlocker" | "browser";
+  fallbackAttempted?: boolean;
+  fallbackUsed?: boolean;
+  fallbackReason?: string;
+  warning?: string;
+  request?: unknown;
+}> {
   if (options.onlyMainContent && format !== "json") {
     const readOptions = {
       source: options.source,
@@ -130,11 +153,11 @@ async function formatOutput(
 
     switch (format) {
       case "html":
-        return (await readHtmlContent(url, config, apiKey, readOptions)).content;
+        return mapReadableBatchResult(await readHtmlContent(url, config, apiKey, readOptions));
       case "markdown":
-        return (await readMarkdownContent(url, config, apiKey, readOptions)).content;
+        return mapReadableBatchResult(await readMarkdownContent(url, config, apiKey, readOptions));
       case "text":
-        return (await readTextContent(url, config, apiKey, readOptions)).content;
+        return mapReadableBatchResult(await readTextContent(url, config, apiKey, readOptions));
       default:
         break;
     }
@@ -142,19 +165,79 @@ async function formatOutput(
 
   switch (format) {
     case "html":
-      return (await scrapeRenderedHtml(url, apiKey, requestOptions)).content;
+      return {
+        output: (await scrapeRenderedHtml(url, apiKey, requestOptions)).content,
+      };
     case "markdown":
-      return (await scrapeMarkdown(url, apiKey, requestOptions)).markdown;
+      return {
+        output: (await scrapeMarkdown(url, apiKey, requestOptions)).markdown,
+      };
     case "text":
-      return (await scrapeText(url, apiKey, requestOptions)).text;
+      return {
+        output: (await scrapeText(url, apiKey, requestOptions)).text,
+      };
     case "json":
-      return await scrapeStructuredJson(url, config, apiKey, {
+      return mapStructuredBatchResult(await scrapeStructuredJson(url, config, apiKey, {
         fallback,
         request: requestOptions,
-      });
+      }));
     default:
-      return (await scrapeRenderedHtml(url, apiKey, requestOptions)).content;
+      return {
+        output: (await scrapeRenderedHtml(url, apiKey, requestOptions)).content,
+      };
   }
+}
+
+function mapReadableBatchResult(result: Awaited<ReturnType<typeof readTextContent>>): {
+  output: string;
+  outcome: PageOutcome;
+  outcomeReason?: string;
+  nextActionHint?: NextActionHint;
+  renderSource: "unlocker" | "browser";
+  fallbackAttempted: boolean;
+  fallbackUsed: boolean;
+  fallbackReason?: string;
+  warning?: string;
+  request?: unknown;
+} {
+  return {
+    output: result.content,
+    outcome: result.outcome,
+    outcomeReason: result.outcomeReason,
+    nextActionHint: result.nextActionHint,
+    renderSource: result.renderSource,
+    fallbackAttempted: result.fallbackAttempted,
+    fallbackUsed: result.fallbackUsed,
+    fallbackReason: result.fallbackReason,
+    warning: result.warning,
+    request: result.request,
+  };
+}
+
+function mapStructuredBatchResult(result: Awaited<ReturnType<typeof scrapeStructuredJson>>): {
+  output: Awaited<ReturnType<typeof scrapeStructuredJson>>;
+  outcome: PageOutcome;
+  outcomeReason?: string;
+  nextActionHint?: NextActionHint;
+  renderSource: "unlocker" | "browser";
+  fallbackAttempted: boolean;
+  fallbackUsed: boolean;
+  fallbackReason?: string;
+  warning?: string;
+  request?: unknown;
+} {
+  return {
+    output: result,
+    outcome: result.outcome,
+    outcomeReason: result.outcomeReason,
+    nextActionHint: result.nextActionHint,
+    renderSource: result.renderSource,
+    fallbackAttempted: result.fallbackAttempted,
+    fallbackUsed: result.fallbackUsed,
+    fallbackReason: result.fallbackReason,
+    warning: result.warning,
+    request: result.request,
+  };
 }
 
 async function mapWithConcurrency<TInput, TOutput>(
@@ -236,6 +319,32 @@ function extractErrorCode(error: unknown): string | undefined {
     typeof (error as { code?: unknown }).code === "string"
   ) {
     return (error as { code: string }).code;
+  }
+
+  return undefined;
+}
+
+function extractOutcome(error: unknown): string | undefined {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "outcome" in error &&
+    typeof (error as { outcome?: unknown }).outcome === "string"
+  ) {
+    return (error as { outcome: string }).outcome;
+  }
+
+  return undefined;
+}
+
+function extractNextActionHint(error: unknown): string | undefined {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "nextActionHint" in error &&
+    typeof (error as { nextActionHint?: unknown }).nextActionHint === "string"
+  ) {
+    return (error as { nextActionHint: string }).nextActionHint;
   }
 
   return undefined;

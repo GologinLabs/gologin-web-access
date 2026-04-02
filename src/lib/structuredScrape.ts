@@ -1,6 +1,13 @@
 import { requireCloudToken } from "../config";
 import { CliError } from "./errors";
 import { scrapeJsonViaBrowser } from "./browserStructured";
+import {
+  assessStructuredPageOutcome,
+  describeNextActionHint,
+  detectStructuredBlockedReason,
+  type NextActionHint,
+  type PageOutcome,
+} from "./pageOutcome";
 import type { ResolvedConfig } from "./types";
 import {
   scrapeJson,
@@ -16,6 +23,9 @@ export type StructuredFallbackMode = "none" | "browser";
 export interface StructuredScrapeEnvelope {
   url: string;
   status: number | null | undefined;
+  outcome: PageOutcome;
+  outcomeReason?: string;
+  nextActionHint?: NextActionHint;
   renderSource: StructuredRenderSource;
   fallbackAttempted: boolean;
   fallbackUsed: boolean;
@@ -29,12 +39,16 @@ export interface StructuredScrapeEnvelope {
 class StructuredBlockedPageError extends CliError {
   public readonly status: number | null | undefined;
   public readonly request: ScrapeRequestMeta;
+  public readonly outcome: PageOutcome;
+  public readonly nextActionHint?: NextActionHint;
 
   public constructor(
     url: string,
     status: number | null | undefined,
     request: ScrapeRequestMeta,
+    outcome: PageOutcome,
     reason: string,
+    nextActionHint: NextActionHint | undefined,
     options: {
       fallbackAttempted: boolean;
       fallbackUsed: boolean;
@@ -42,7 +56,7 @@ class StructuredBlockedPageError extends CliError {
     },
   ) {
     super(
-      `Structured scrape returned a likely blocked or challenge page for ${url}.`,
+      `Structured scrape returned ${outcome.replace(/_/g, " ")} content for ${url}.`,
       1,
       [
         `Reason: ${reason}.`,
@@ -50,12 +64,15 @@ class StructuredBlockedPageError extends CliError {
           ? options.fallbackUsed
             ? "Browser fallback was used but the page still looked blocked."
             : `Browser fallback was attempted but not used. ${options.fallbackReason ?? "It did not improve the result."}`
-          : "Retry with --fallback browser, use read --source browser, or switch to gologin-local-agent-browser for full rendered DOM.",
+          : describeNextActionHint(nextActionHint) ??
+            "Retry with --fallback browser, use read --source browser, or switch to gologin-local-agent-browser for full rendered DOM.",
       ].join("\n"),
-      "BLOCKED_PAGE",
+      outcomeToErrorCode(outcome),
     );
     this.status = status;
     this.request = request;
+    this.outcome = outcome;
+    this.nextActionHint = nextActionHint;
   }
 }
 
@@ -76,7 +93,7 @@ export async function scrapeStructuredJson(
   let fallbackAttempted = false;
   let fallbackUsed = false;
   let fallbackReason: string | undefined;
-  let { browserRecommended, warning } = buildStructuredFallbackAdvisory(data);
+  let { outcome, reason, nextActionHint, browserRecommended, warning } = assessStructuredPageOutcome(data);
 
   if (fallbackMode === "browser" && shouldUseBrowserFallback(data)) {
     fallbackAttempted = true;
@@ -90,16 +107,14 @@ export async function scrapeStructuredJson(
       renderSource = "browser";
       fallbackUsed = true;
       fallbackReason = "unlocker structured data looked incomplete";
-      browserRecommended = false;
-      warning = undefined;
+      ({ outcome, reason, nextActionHint, browserRecommended, warning } = assessStructuredPageOutcome(data));
     } else {
       fallbackReason = "browser fallback did not improve structured output";
     }
   }
 
-  const blockedReason = detectStructuredBlockReason(data);
-  if (blockedReason) {
-    throw new StructuredBlockedPageError(url, result.status, result.request, blockedReason, {
+  if (outcome === "authwall" || outcome === "challenge" || outcome === "blocked" || outcome === "cookie_wall") {
+    throw new StructuredBlockedPageError(url, result.status, result.request, outcome, reason ?? "Outcome matched page markers", nextActionHint, {
       fallbackAttempted,
       fallbackUsed,
       fallbackReason,
@@ -108,6 +123,9 @@ export async function scrapeStructuredJson(
 
   return makeStructuredScrapeEnvelope(url, result, data, {
     renderSource,
+    outcome,
+    outcomeReason: reason,
+    nextActionHint,
     fallbackAttempted,
     fallbackUsed,
     fallbackReason,
@@ -121,6 +139,9 @@ export function makeStructuredScrapeEnvelope(
   result: Pick<ScrapeJsonResult, "status" | "request">,
   data: ScrapeJsonData,
   options: {
+    outcome?: PageOutcome;
+    outcomeReason?: string;
+    nextActionHint?: NextActionHint;
     renderSource?: StructuredRenderSource;
     fallbackAttempted?: boolean;
     fallbackUsed?: boolean;
@@ -132,6 +153,9 @@ export function makeStructuredScrapeEnvelope(
   return {
     url,
     status: result.status,
+    outcome: options.outcome ?? "ok",
+    outcomeReason: options.outcomeReason,
+    nextActionHint: options.nextActionHint,
     renderSource: options.renderSource ?? "unlocker",
     fallbackAttempted: options.fallbackAttempted ?? false,
     fallbackUsed: options.fallbackUsed ?? false,
@@ -156,46 +180,22 @@ export function normalizeStructuredFallbackMode(value: string | undefined): Stru
 }
 
 export function shouldUseBrowserFallback(data: ScrapeJsonData): boolean {
-  if (detectStructuredBlockReason(data)) {
-    return true;
-  }
-
-  const firstH1 = data.headingsByLevel.h1[0];
-  if (!firstH1) {
-    return true;
-  }
-
-  return looksSuspiciousHeadingText(firstH1);
+  return assessStructuredPageOutcome(data).outcome !== "ok";
 }
 
 export function buildStructuredFallbackAdvisory(
   data: ScrapeJsonData
 ): { browserRecommended: boolean; warning?: string } {
-  const blockedReason = detectStructuredBlockReason(data);
-  if (blockedReason) {
-    return {
-      browserRecommended: true,
-      warning: `Structured output looks blocked or challenge-gated (${blockedReason}). Retry with --fallback browser or use a rendered browser path.`,
-    };
-  }
-
-  if (!shouldUseBrowserFallback(data)) {
-    return { browserRecommended: false };
-  }
-
+  const assessment = assessStructuredPageOutcome(data);
   return {
-    browserRecommended: true,
-    warning: "Structured output looks incomplete or client-rendered. Retry with --fallback browser or use read/open for rendered DOM.",
+    browserRecommended: assessment.browserRecommended,
+    warning: assessment.warning,
   };
 }
 
-function looksSuspiciousHeadingText(value: string): boolean {
-  return /function\s*\(|window\.|document\.|const\s+|let\s+|var\s+|=>|import\s+/i.test(value) || value.length > 240;
-}
-
 function isBrowserDataBetter(current: ScrapeJsonData, candidate: ScrapeJsonData): boolean {
-  const currentBlocked = Boolean(detectStructuredBlockReason(current));
-  const candidateBlocked = Boolean(detectStructuredBlockReason(candidate));
+  const currentBlocked = Boolean(detectStructuredBlockedReason(current));
+  const candidateBlocked = Boolean(detectStructuredBlockedReason(candidate));
   if (currentBlocked !== candidateBlocked) {
     return currentBlocked && !candidateBlocked;
   }
@@ -216,41 +216,28 @@ function isBrowserDataBetter(current: ScrapeJsonData, candidate: ScrapeJsonData)
 }
 
 export function detectStructuredBlockReason(data: ScrapeJsonData): string | undefined {
-  const candidates = [
-    data.title,
-    data.description,
-    ...data.headingsByLevel.h1.slice(0, 2),
-    ...data.headingsByLevel.h2.slice(0, 2),
-  ].filter((value): value is string => Boolean(value && value.trim()));
-
-  for (const candidate of candidates) {
-    const reason = classifyBlockedText(candidate);
-    if (reason) {
-      return reason;
-    }
-  }
-
-  return undefined;
+  return (
+    assessStructuredPageOutcome(data).reason ??
+    detectStructuredBlockedReason(data)
+  );
 }
 
-function classifyBlockedText(value: string): string | undefined {
-  const text = value.trim();
-
-  if (
-    /(verify you are human|verify you are a human|are you human|captcha|security check|attention required|just a moment|checking your browser|enable javascript and cookies to continue|one more step)/i.test(
-      text,
-    )
-  ) {
-    return "challenge markers matched the page title or heading";
+function outcomeToErrorCode(outcome: PageOutcome): string {
+  switch (outcome) {
+    case "authwall":
+      return "AUTHWALL_PAGE";
+    case "challenge":
+      return "CHALLENGE_PAGE";
+    case "cookie_wall":
+      return "COOKIE_WALL_PAGE";
+    case "blocked":
+      return "BLOCKED_PAGE";
+    case "empty":
+      return "EMPTY_PAGE";
+    case "incomplete":
+      return "INCOMPLETE_PAGE";
+    case "ok":
+    default:
+      return "PAGE_OUTCOME";
   }
-
-  if (
-    /(access denied|forbidden|blocked request|request blocked|request unsuccessful|temporarily blocked|temporarily unavailable|you have been blocked|access to this page has been denied)/i.test(
-      text,
-    )
-  ) {
-    return "blocked-page markers matched the page title or heading";
-  }
-
-  return undefined;
 }

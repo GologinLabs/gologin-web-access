@@ -10,6 +10,10 @@ export interface ExtractUrlResult {
   fallbackAttempted: boolean;
   fallbackUsed: boolean;
   fallbackReason?: string;
+  outcome?: string;
+  outcomeReason?: string;
+  nextActionHint?: string;
+  warning?: string;
   request?: unknown;
   extracted: Record<string, unknown>;
 }
@@ -38,6 +42,10 @@ export async function extractUrlWithSchema(
     fallbackAttempted: rendered.fallbackAttempted,
     fallbackUsed: rendered.fallbackUsed,
     fallbackReason: rendered.fallbackReason,
+    outcome: rendered.outcome,
+    outcomeReason: rendered.outcomeReason,
+    nextActionHint: rendered.nextActionHint,
+    warning: rendered.warning,
     request: rendered.request,
     extracted: extractWithSchema(rendered.html, schema),
   };

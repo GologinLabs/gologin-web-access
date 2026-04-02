@@ -1,6 +1,7 @@
 import { Command } from "commander";
 import { loadConfig, requireWebUnlockerKey } from "../config";
-import { normalizeReadSourceMode, readMarkdownContent } from "../lib/readSource";
+import { describeNextActionHint } from "../lib/pageOutcome";
+import { normalizeReadSourceMode, readMarkdownContent, type ReadContentEnvelope } from "../lib/readSource";
 import { addUnlockerRequestOptions, normalizeUnlockerRequestOptions } from "./shared";
 import { printText } from "../lib/output";
 
@@ -18,23 +19,32 @@ export function buildScrapeMarkdownCommand(): Command {
         source,
         request: normalizeUnlockerRequestOptions(options),
       });
-      emitReadNotice(result.fallbackAttempted, result.fallbackUsed, result.fallbackReason);
+      emitReadNotice(result);
       printText(result.content);
     }),
   );
 }
 
-function emitReadNotice(fallbackAttempted: boolean, fallbackUsed: boolean, fallbackReason?: string): void {
-  if (!fallbackAttempted) {
+function emitReadNotice(result: Pick<ReadContentEnvelope, "fallbackAttempted" | "fallbackUsed" | "fallbackReason" | "outcome" | "warning" | "nextActionHint">): void {
+  if (result.fallbackAttempted) {
+    if (result.fallbackUsed) {
+      process.stderr.write(`JS-rendered page detected, retrying with browser. ${result.fallbackReason ?? ""}\n`);
+    } else if (result.fallbackReason) {
+      process.stderr.write(`${result.fallbackReason}\n`);
+    }
+  }
+
+  if (result.outcome !== "ok") {
+    process.stderr.write(`Outcome: ${result.outcome}\n`);
+  }
+
+  if (result.warning) {
+    process.stderr.write(`${result.warning}\n`);
     return;
   }
 
-  if (fallbackUsed) {
-    process.stderr.write(`JS-rendered page detected, retrying with browser. ${fallbackReason ?? ""}\n`);
-    return;
-  }
-
-  if (fallbackReason) {
-    process.stderr.write(`${fallbackReason}\n`);
+  const hint = describeNextActionHint(result.nextActionHint);
+  if (hint && result.outcome !== "ok") {
+    process.stderr.write(`${hint}\n`);
   }
 }

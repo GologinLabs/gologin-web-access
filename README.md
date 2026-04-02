@@ -305,6 +305,7 @@ gologin-web-access snapshot -i
 - `batch-extract` reuses the same extraction path across many URLs and returns one structured result per URL, including request and fallback metadata. Add `--output <path>` to save the full array directly.
 - `scrape-json` now returns both a flat `headings` array and `headingsByLevel` buckets for `h1` through `h6`.
 - `scrape-json --fallback browser` is available for JS-heavy pages where stateless extraction returns weak heading data.
+- `scrape-json` now also classifies the page outcome as `ok`, `empty`, `incomplete`, `authwall`, `challenge`, `blocked`, or `cookie_wall`, and includes `nextActionHint` when the result is weak or gated.
 - `scrape`, `scrape-markdown`, `scrape-text`, `scrape-json`, and `batch-scrape` accept `--retry`, `--backoff-ms`, and `--timeout-ms`.
 - `batch-scrape --only-main-content` lets markdown, text, and html batch runs use the same readable-content isolation path as `read`.
 - `crawl --only-main-content` uses the same readable-fragment extraction strategy for html, markdown, and text crawl output, but stays on the stateless unlocker path.
@@ -312,6 +313,7 @@ gologin-web-access snapshot -i
 - `batch-scrape` now returns exit code `0` on partial success by default and only fails the command when every URL failed. Add `--strict` if any single failed URL should make the whole batch exit non-zero.
 - `batch-scrape --output <path>` writes the full JSON to disk so shells and agent consoles cannot truncate a large payload silently.
 - `batch-scrape --format json` now returns the same structured scrape envelope as `scrape-json`, including `renderSource`, `fallbackAttempted`, `fallbackUsed`, and `request.attemptCount/retryCount/attempts`.
+- `batch-scrape --only-main-content` now propagates `outcome`, `outcomeReason`, `nextActionHint`, and fallback metadata per URL so agents can tell "weak page" from "gated page" without scraping log text.
 - `scrape-json` now surfaces explicit `BLOCKED_PAGE` failures when structured output clearly matches a challenge or block page, instead of silently looking like a valid empty result.
 - `search` now returns `requestedLimit`, `returnedCount`, `warnings`, `cacheTtlMs`, and per-result `position`.
 - `search` may return fewer results than the requested `--limit` when the upstream SERP contains fewer valid results; inspect `returnedCount`, `warnings`, and `attempts`.
