@@ -8,7 +8,7 @@
    `npm whoami`
 3. If this project gets a public repository, add `repository` and `bugs` fields to `package.json`.
 4. If publishing from GitHub Actions, add an `NPM_TOKEN` secret to the repository.
-5. This repository now contains both the Web Unlocker layer and the embedded Cloud Browser runtime.
+5. This repository now contains both the Scraping API layer and the embedded Cloud Browser runtime.
 
 ## Local release checklist
 
@@ -45,4 +45,4 @@ Suggested flow:
 - The installed command is `gologin-web-access`.
 - Browser automation is embedded in this package.
 - Recommended install is `npm install -g gologin-web-access`.
-- Web Unlocker support is embedded in this package and does not require a second npm package.
+- Scraping API support is embedded in this package and does not require a second npm package.

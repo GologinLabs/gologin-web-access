@@ -14,12 +14,12 @@ export function buildBatchScrapeCommand(): Command {
   return addProfileOption(
     addUnlockerRequestOptions(
       new Command("batch-scrape")
-        .description("Fetch multiple pages through Web Unlocker and print a JSON array of results.")
+        .description("Fetch multiple pages through Scraping API and print a JSON array of results.")
         .argument("<urls...>", "One or more URLs")
         .option("--format <format>", "html, markdown, text, or json", "html")
         .option("--concurrency <count>", "Number of concurrent requests", "4")
         .option("--fallback <mode>", "Structured scrape fallback: none or browser", "none")
-        .option("--source <source>", "Read source for --only-main-content mode: auto, unlocker, or browser", "auto")
+        .option("--source <source>", "Read source for --only-main-content mode: auto, scraping, or browser. Legacy alias: unlocker", "auto")
         .option("--only-main-content", "For html, markdown, or text formats, isolate the most readable content block per page")
         .option("--output <path>", "Write the full batch result JSON to a file")
         .option("--summary", "Print one-line summary stats to stderr after the JSON output")

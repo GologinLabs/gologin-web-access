@@ -8,9 +8,9 @@ import { printText } from "../lib/output";
 export function buildScrapeMarkdownCommand(): Command {
   return addUnlockerRequestOptions(
     new Command("scrape-markdown")
-    .description("Fetch a page through Web Unlocker and print Markdown.")
+    .description("Fetch a page through Scraping API and print Markdown.")
     .argument("<url>", "URL to scrape")
-    .option("--source <source>", "Read source: auto, unlocker, or browser", "auto")
+    .option("--source <source>", "Read source: auto, scraping, or browser. Legacy alias: unlocker", "auto")
     .action(async (url: string, options: { source?: string; retry?: string; backoffMs?: string; timeoutMs?: string }) => {
       const config = await loadConfig();
       const source = normalizeReadSourceMode(options.source, "auto");

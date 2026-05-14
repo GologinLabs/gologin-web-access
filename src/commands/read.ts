@@ -14,7 +14,7 @@ export function buildReadCommand(): Command {
         .description("Read the main content of a docs page or article with automatic fallback to Cloud Browser when needed.")
         .argument("<url>", "URL to read")
         .option("--format <format>", "Output format: html, markdown, or text", "text")
-        .option("--source <source>", "Read source: auto, unlocker, or browser", "auto")
+        .option("--source <source>", "Read source: auto, scraping, or browser. Legacy alias: unlocker", "auto")
         .action(async (url: string, options: {
           format?: string;
           source?: string;

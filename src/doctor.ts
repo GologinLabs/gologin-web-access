@@ -12,7 +12,7 @@ export async function runDoctor(options: { json?: boolean } = {}): Promise<void>
   const recommended = getRecommendedCredentialStatus(config);
 
   checks.push({
-    name: "Web Unlocker API key",
+    name: "Scraping API key",
     status: config.webUnlockerApiKey ? "ok" : "warn",
     detail: config.webUnlockerApiKey ? `configured via ${config.sources.webUnlockerApiKey}` : "missing",
   });
@@ -27,7 +27,7 @@ export async function runDoctor(options: { json?: boolean } = {}): Promise<void>
     name: "Recommended full setup",
     status: recommended.ready ? "ok" : "warn",
     detail: recommended.ready
-      ? "both GOLOGIN_WEB_UNLOCKER_API_KEY and GOLOGIN_TOKEN are configured"
+      ? "both GOLOGIN_SCRAPING_API_KEY and GOLOGIN_TOKEN are configured"
       : `missing ${recommended.missing.join(" and ")}`,
   });
 

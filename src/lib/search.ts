@@ -404,7 +404,7 @@ async function searchViaUnlocker(
   engine: SearchProvider,
 ): Promise<{ url: string; results: SearchResultItem[] }> {
   if (!config.webUnlockerApiKey) {
-    throw new CliError("Missing GOLOGIN_WEB_UNLOCKER_API_KEY for unlocker search.");
+    throw new CliError("Missing GOLOGIN_SCRAPING_API_KEY for Scraping API search.");
   }
 
   const searchUrl = buildSearchUrl(engine, query, options);

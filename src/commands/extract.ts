@@ -14,7 +14,7 @@ export function buildExtractCommand(): Command {
     .argument("<url>", "Target URL")
     .requiredOption("--schema <path>", "Path to a JSON extraction schema")
     .option("--output <path>", "Write extracted JSON to a file")
-    .option("--source <source>", "Read source: auto, unlocker, or browser", "auto")
+    .option("--source <source>", "Read source: auto, scraping, or browser. Legacy alias: unlocker", "auto")
     .action(async (url: string, options: { schema: string; output?: string; source?: string; retry?: string; backoffMs?: string; timeoutMs?: string }) => {
       const config = await loadConfig();
       const source = normalizeReadSourceMode(options.source, "auto");

@@ -11,14 +11,14 @@ const CONFIG_FILENAME = "config.json";
 
 export const DEFAULT_DAEMON_PORT = 4590;
 export const ENV_NAMES = {
-  webUnlockerApiKey: "GOLOGIN_WEB_UNLOCKER_API_KEY",
+  webUnlockerApiKey: "GOLOGIN_SCRAPING_API_KEY",
   cloudToken: "GOLOGIN_TOKEN",
   defaultProfileId: "GOLOGIN_DEFAULT_PROFILE_ID",
   daemonPort: "GOLOGIN_DAEMON_PORT",
 } as const;
 
 const LEGACY_ENV_NAMES = {
-  webUnlockerApiKey: ["GOLOGIN_WEBUNLOCKER_API_KEY"],
+  webUnlockerApiKey: ["GOLOGIN_WEB_UNLOCKER_API_KEY", "GOLOGIN_WEBUNLOCKER_API_KEY"],
   cloudToken: ["GOLOGIN_CLOUD_TOKEN"],
   defaultProfileId: ["GOLOGIN_PROFILE_ID"],
   daemonPort: [],
@@ -141,7 +141,7 @@ export function getRecommendedCredentialStatus(config: ResolvedConfig): {
     return {
       ready: true,
       missing,
-      detail: "complete (Web Unlocker + Cloud Browser configured)",
+      detail: "complete (Scraping API + Cloud Browser configured)",
     };
   }
 

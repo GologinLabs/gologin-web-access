@@ -8,7 +8,7 @@ export function buildScrapeJsonCommand(): Command {
   return addProfileOption(
     addUnlockerRequestOptions(
       new Command("scrape-json")
-    .description("Fetch a page through Web Unlocker and print a structured JSON envelope.")
+    .description("Fetch a page through Scraping API and print a structured JSON envelope.")
     .argument("<url>", "URL to scrape")
     .option("--fallback <mode>", "none or browser structured fallback for JS-heavy pages", "none")
     .action(

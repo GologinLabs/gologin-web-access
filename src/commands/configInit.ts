@@ -6,9 +6,10 @@ import { validateWebUnlockerKey } from "../lib/unlocker";
 
 export function buildConfigInitCommand(): Command {
   return new Command("init")
-    .description("Write ~/.gologin-web-access/config.json with current values or placeholders. Recommended: persist both the Web Unlocker key and the GoLogin token.")
-    .option("--web-unlocker-api-key <key>", "Persist a Web Unlocker API key")
-    .option("--web-unlocker-key <key>", "Alias for --web-unlocker-api-key")
+    .description("Write ~/.gologin-web-access/config.json with current values or placeholders. Recommended: persist both the Scraping API key and the GoLogin token.")
+    .option("--scraping-api-key <key>", "Persist a Scraping API key")
+    .option("--web-unlocker-api-key <key>", "Legacy alias for --scraping-api-key")
+    .option("--web-unlocker-key <key>", "Legacy alias for --scraping-api-key")
     .option("--token <token>", "Persist a GoLogin token")
     .option("--cloud-token <token>", "Backward-compatible alias for --token")
     .option("--default-profile-id <id>", "Persist a default Gologin profile ID")
@@ -19,6 +20,7 @@ export function buildConfigInitCommand(): Command {
       async (options: {
         webUnlockerApiKey?: string;
         webUnlockerKey?: string;
+        scrapingApiKey?: string;
         token?: string;
         cloudToken?: string;
         defaultProfileId?: string;
@@ -26,7 +28,13 @@ export function buildConfigInitCommand(): Command {
         validate?: boolean;
         force?: boolean;
       }) => {
-        const webUnlockerApiKey = options.webUnlockerApiKey ?? options.webUnlockerKey ?? process.env[ENV_NAMES.webUnlockerApiKey];
+        const webUnlockerApiKey =
+          options.scrapingApiKey ??
+          options.webUnlockerApiKey ??
+          options.webUnlockerKey ??
+          process.env[ENV_NAMES.webUnlockerApiKey] ??
+          process.env.GOLOGIN_WEB_UNLOCKER_API_KEY ??
+          process.env.GOLOGIN_WEBUNLOCKER_API_KEY;
         const result = await initConfigFile(
           {
             webUnlockerApiKey,
@@ -51,7 +59,7 @@ export function buildConfigInitCommand(): Command {
         printKeyValueRows([
           { label: "Config file", value: result.path },
           {
-            label: "Web Unlocker key",
+            label: "Scraping API key",
             value: result.config.webUnlockerApiKey ? "written" : "left empty",
           },
           {
@@ -70,7 +78,7 @@ export function buildConfigInitCommand(): Command {
 
         if (!result.config.webUnlockerApiKey || !result.config.cloudToken) {
           printText(
-            "Recommended next step: configure both GOLOGIN_WEB_UNLOCKER_API_KEY and GOLOGIN_TOKEN so agents can use scraping and browser flows without asking again.",
+            "Recommended next step: configure both GOLOGIN_SCRAPING_API_KEY and GOLOGIN_TOKEN so agents can use scraping and browser flows without asking again.",
           );
         }
 
@@ -82,7 +90,7 @@ export function buildConfigInitCommand(): Command {
         if (result.config.webUnlockerApiKey) {
           const validation = await validateWebUnlockerKey(result.config.webUnlockerApiKey);
           validationRows.push({
-            label: "Web Unlocker validation",
+            label: "Scraping API validation",
             value: validation.ok ? "ok" : `failed${validation.status ? ` (${validation.status})` : ""}: ${validation.detail}`,
           });
         }

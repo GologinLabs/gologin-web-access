@@ -74,14 +74,14 @@ import { runDoctor } from "./doctor";
 import { toCliError } from "./lib/errors";
 import { printError, printText } from "./lib/output";
 
-const CLI_VERSION = "0.3.3";
+const CLI_VERSION = "0.3.4";
 
 async function main(): Promise<void> {
   const program = new Command();
 
   program
     .name("gologin-web-access")
-    .description("Read and interact with the web using Gologin Web Unlocker and Cloud Browser.")
+    .description("Read and interact with the web using the GoLogin Scraping API and Cloud Browser.")
     .version(CLI_VERSION)
     .showHelpAfterError()
     .showSuggestionAfterError();
@@ -191,7 +191,7 @@ Command groups:
   Agent:    gologin-web-access run|batch|jobs|job
 
 Key model:
-  ${"GOLOGIN_WEB_UNLOCKER_API_KEY"} powers scraping commands.
+  ${"GOLOGIN_SCRAPING_API_KEY"} powers scraping commands.
   ${"GOLOGIN_TOKEN"} powers browser commands.
   Recommended setup: configure both keys up front, even if the current task only needs one path.
 `,

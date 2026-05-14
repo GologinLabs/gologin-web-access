@@ -1,6 +1,6 @@
 # Gologin Web Access
 
-Gologin Web Access lets developers and AI agents read and interact with the web using Gologin Web Unlocker and Gologin Cloud Browser.
+Gologin Web Access lets developers and AI agents read and interact with the web using GoLogin Scraping API and Gologin Cloud Browser.
 
 This is a unified web access layer, not just a scraping tool and not just a browser automation tool.
 
@@ -18,7 +18,7 @@ Package name and binary are the same:
 
 Gologin Web Access combines two existing product surfaces behind one CLI:
 
-- Web Unlocker
+- Scraping API
   Stateless read and extraction. Best when you want page content quickly without maintaining a browser session.
 - Cloud Browser
   Stateful interaction. Best when you need navigation, clicks, typing, screenshots, or multi-step flows that persist across commands.
@@ -36,23 +36,23 @@ The point of the unified CLI is that both modes live in one product with one com
 
 ### Scraping / Read
 
-These commands use Gologin Web Unlocker:
+These commands use GoLogin Scraping API:
 
 - `gologin-web-access scrape <url>`
-- `gologin-web-access read <url> [--format text|markdown|html] [--source auto|unlocker|browser]`
-- `gologin-web-access scrape-markdown <url> [--source auto|unlocker|browser]`
-- `gologin-web-access scrape-text <url> [--source auto|unlocker|browser]`
+- `gologin-web-access read <url> [--format text|markdown|html] [--source auto|scraping|browser]`
+- `gologin-web-access scrape-markdown <url> [--source auto|scraping|browser]`
+- `gologin-web-access scrape-text <url> [--source auto|scraping|browser]`
 - `gologin-web-access scrape-json <url> [--fallback none|browser]`
-- `gologin-web-access batch-scrape <url...> [--format html|markdown|text|json] [--fallback none|browser] [--source auto|unlocker|browser] [--only-main-content] [--retry <n>] [--backoff-ms <ms>] [--summary] [--output <path>] [--strict]`
-- `gologin-web-access batch-extract <url...> --schema <schema.json> [--source auto|unlocker|browser] [--retry <n>] [--backoff-ms <ms>] [--summary] [--output <path>]`
-- `gologin-web-access search <query> [--limit <n>] [--country <cc>] [--language <lang>] [--source auto|unlocker|browser]`
+- `gologin-web-access batch-scrape <url...> [--format html|markdown|text|json] [--fallback none|browser] [--source auto|scraping|browser] [--only-main-content] [--retry <n>] [--backoff-ms <ms>] [--summary] [--output <path>] [--strict]`
+- `gologin-web-access batch-extract <url...> --schema <schema.json> [--source auto|scraping|browser] [--retry <n>] [--backoff-ms <ms>] [--summary] [--output <path>]`
+- `gologin-web-access search <query> [--limit <n>] [--country <cc>] [--language <lang>] [--source auto|scraping|browser]`
 - `gologin-web-access map <url> [--limit <n>] [--max-depth <n>] [--concurrency <n>] [--strict]`
 - `gologin-web-access crawl <url> [--format html|markdown|text|json] [--limit <n>] [--max-depth <n>] [--only-main-content] [--strict]`
 - `gologin-web-access crawl-start <url> ...`
 - `gologin-web-access crawl-status <jobId>`
 - `gologin-web-access crawl-result <jobId>`
 - `gologin-web-access crawl-errors <jobId>`
-- `gologin-web-access extract <url> --schema <schema.json> [--source auto|unlocker|browser]`
+- `gologin-web-access extract <url> --schema <schema.json> [--source auto|scraping|browser]`
 - `gologin-web-access change-track <url> [--format html|markdown|text|json]`
 - `gologin-web-access batch-change-track <url...> [--format html|markdown|text|json] [--retry <n>] [--backoff-ms <ms>] [--summary] [--output <path>]`
 - `gologin-web-access parse-document <url-or-path>`
@@ -111,7 +111,7 @@ Use these when you need state, interaction, or multi-step browser flows.
 
 ### GoLogin API Helpers
 
-These commands use the GoLogin REST API directly through `GOLOGIN_TOKEN`. They do not require Web Unlocker and do not start the browser daemon:
+These commands use the GoLogin REST API directly through `GOLOGIN_TOKEN`. They do not require Scraping API and do not start the browser daemon:
 
 - `gologin-web-access cloud-usage --profile <profileId> | --workspace <workspaceId> [--days <1-30>] [--json]`
 - `gologin-web-access profile-cloud start <profileId> [--json]`
@@ -185,7 +185,7 @@ If the browser surface grows substantially later, a nested namespace may become 
 
 This CLI uses two different GoLogin credentials on purpose, because the underlying products are different.
 
-- `GOLOGIN_WEB_UNLOCKER_API_KEY`
+- `GOLOGIN_SCRAPING_API_KEY`
   Required for Scraping / Read commands.
 - `GOLOGIN_TOKEN`
   Required for `gologin-web-access open`, GoLogin API helper commands, and profile validation in `gologin-web-access doctor`.
@@ -194,16 +194,16 @@ This CLI uses two different GoLogin credentials on purpose, because the underlyi
 - `GOLOGIN_DAEMON_PORT`
   Optional local daemon port for browser workflows.
 
-Recommended full setup for agents is to configure both `GOLOGIN_WEB_UNLOCKER_API_KEY` and `GOLOGIN_TOKEN` before starting work, even if the current task looks read-only or browser-only.
+Recommended full setup for agents is to configure both `GOLOGIN_SCRAPING_API_KEY` and `GOLOGIN_TOKEN` before starting work, even if the current task looks read-only or browser-only.
 
 Missing-key errors are command-group specific. Example:
 
-`Missing GOLOGIN_WEB_UNLOCKER_API_KEY. This is required for scraping commands like \`gologin-web-access scrape\`.`
+`Missing GOLOGIN_SCRAPING_API_KEY. This is required for scraping commands like \`gologin-web-access scrape\`.`
 
 Environment variables are the primary configuration mechanism:
 
 ```bash
-export GOLOGIN_WEB_UNLOCKER_API_KEY="wu_..."
+export GOLOGIN_SCRAPING_API_KEY="wu_..."
 export GOLOGIN_TOKEN="gl_..."
 export GOLOGIN_DEFAULT_PROFILE_ID="profile_123"
 export GOLOGIN_DAEMON_PORT="4590"
@@ -218,8 +218,8 @@ gologin-web-access config init
 Useful variants:
 
 ```bash
-gologin-web-access config init --web-unlocker-api-key wu_... --token gl_...
-gologin-web-access config init --web-unlocker-key wu_... --token gl_...
+gologin-web-access config init --scraping-api-key wu_... --token gl_...
+gologin-web-access config init --web-unlocker-key wu_... --token gl_... # legacy alias
 ```
 
 That writes `~/.gologin-web-access/config.json` once and the CLI will keep reading it on later runs.
@@ -266,7 +266,7 @@ npm install -g gologin-web-access
 ### Read A Page
 
 ```bash
-export GOLOGIN_WEB_UNLOCKER_API_KEY="wu_..."
+export GOLOGIN_SCRAPING_API_KEY="wu_..."
 
 gologin-web-access scrape https://example.com
 gologin-web-access read https://docs.browserbase.com/features/stealth-mode
@@ -332,17 +332,17 @@ gologin-web-access snapshot -i
 
 ## Structured Output And Retry Controls
 
-- `scrape-markdown` and `scrape-text` now default to `--source auto`: they start with Unlocker, isolate the most readable content block, and can auto-retry with Cloud Browser when the output still looks like JS-rendered docs chrome.
+- `scrape-markdown` and `scrape-text` now default to `--source auto`: they start with Scraping API, isolate the most readable content block, and can auto-retry with Cloud Browser when the output still looks like JS-rendered docs chrome.
 - `read` is the shortest path for "look at this docs page" work: it targets the most readable content block and defaults to `--format text --source auto`.
-- `scrape-markdown` and `scrape-text` also accept `--source unlocker` and `--source browser` when you want to force one path.
-- `extract` now accepts `--source auto|unlocker|browser` and returns `renderSource`, fallback flags, and request metadata with the extracted JSON.
+- `scrape-markdown` and `scrape-text` also accept `--source scraping` and `--source browser` when you want to force one path. `--source unlocker` remains as a legacy alias.
+- `extract` now accepts `--source auto|scraping|browser` and returns `renderSource`, fallback flags, and request metadata with the extracted JSON.
 - `batch-extract` reuses the same extraction path across many URLs and returns one structured result per URL, including request and fallback metadata. Add `--output <path>` to save the full array directly.
 - `scrape-json` now returns both a flat `headings` array and `headingsByLevel` buckets for `h1` through `h6`.
 - `scrape-json --fallback browser` is available for JS-heavy pages where stateless extraction returns weak heading data.
 - `scrape-json` now also classifies the page outcome as `ok`, `empty`, `incomplete`, `authwall`, `challenge`, `blocked`, or `cookie_wall`, and includes `nextActionHint` when the result is weak or gated.
 - `scrape`, `scrape-markdown`, `scrape-text`, `scrape-json`, and `batch-scrape` accept `--retry`, `--backoff-ms`, and `--timeout-ms`.
 - `batch-scrape --only-main-content` lets markdown, text, and html batch runs use the same readable-content isolation path as `read`.
-- `crawl --only-main-content` uses the same readable-fragment extraction strategy for html, markdown, and text crawl output, but stays on the stateless unlocker path.
+- `crawl --only-main-content` uses the same readable-fragment extraction strategy for html, markdown, and text crawl output, but stays on the stateless Scraping API path.
 - `batch-scrape --summary` prints a one-line success/failure summary to `stderr` after the JSON payload.
 - `batch-scrape` now returns exit code `0` on partial success by default and only fails the command when every URL failed. Add `--strict` if any single failed URL should make the whole batch exit non-zero.
 - `batch-scrape --output <path>` writes the full JSON to disk so shells and agent consoles cannot truncate a large payload silently.
@@ -370,7 +370,7 @@ gologin-web-access jobs
 
 Gologin Web Access still has two runtime layers:
 
-- Web Unlocker for stateless read and extraction
+- Scraping API for stateless read and extraction
 - Cloud Browser for stateful interaction
 
 But both are now shipped inside the same package and the same repository. One install gives you the full read layer and the full browser/session layer.

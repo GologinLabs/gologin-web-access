@@ -44,6 +44,10 @@ export function normalizeReadSourceMode(value: string | undefined, defaultMode: 
     return defaultMode;
   }
 
+  if (value === "scraping" || value === "scraping-api") {
+    return "unlocker";
+  }
+
   if (value === "auto" || value === "unlocker" || value === "browser") {
     return value;
   }

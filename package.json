@@ -1,7 +1,7 @@
 {
   "name": "gologin-web-access",
-  "version": "0.3.3",
-  "description": "Unified web access CLI for developers and AI agents to read and interact with the web using Gologin Web Unlocker and Cloud Browser.",
+  "version": "0.3.4",
+  "description": "Unified web access CLI for developers and AI agents to read and interact with the web using the GoLogin Scraping API and Cloud Browser.",
   "main": "dist/cli.js",
   "bin": {
     "gologin-web-access": "dist/cli.js"
@@ -39,6 +39,7 @@
     "gologin",
     "web-access",
     "cli",
+    "scraping-api",
     "webunlocker",
     "scraping",
     "cloud-browser",

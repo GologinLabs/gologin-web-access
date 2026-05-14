@@ -112,7 +112,7 @@ class WebUnlockerClient {
     if (!response.ok) {
       const body = await safeReadText(response, this.timeoutMs);
       throw new HttpError(
-        `Web Unlocker request failed with status ${response.status}.`,
+        `Scraping API request failed with status ${response.status}.`,
         response.status,
         body ? truncate(body, 300) : undefined,
       );
@@ -243,7 +243,7 @@ async function fetchWithRetry(
 
       const body = await safeReadText(response, options.timeoutMs);
       const error = new HttpError(
-        `Web Unlocker request failed with status ${response.status}.`,
+        `Scraping API request failed with status ${response.status}.`,
         response.status,
         body ? truncate(body, 300) : undefined,
       );
@@ -272,10 +272,10 @@ async function fetchWithRetry(
 
       const normalizedError =
         error instanceof Error && error.name === "AbortError"
-          ? new HttpError("Web Unlocker request timed out.", 408)
+          ? new HttpError("Scraping API request timed out.", 408)
           : error instanceof Error
             ? new HttpError(error.message, 500)
-            : new HttpError("Web Unlocker request failed.", 500);
+            : new HttpError("Scraping API request failed.", 500);
       const retriable = attempt < options.maxRetries;
       attempts.push({
         attempt: attempt + 1,
@@ -297,13 +297,13 @@ async function fetchWithRetry(
   }
 
   if (lastError instanceof Error && lastError.name === "AbortError") {
-    throw attachRequestMeta(new HttpError("Web Unlocker request timed out.", 408), attempts);
+    throw attachRequestMeta(new HttpError("Scraping API request timed out.", 408), attempts);
   }
 
   throw attachRequestMeta(
     lastError instanceof Error
       ? new HttpError(lastError.message, 500)
-      : new HttpError("Web Unlocker request failed.", 500),
+      : new HttpError("Scraping API request failed.", 500),
     attempts,
   );
 }
@@ -363,7 +363,7 @@ async function readResponseTextWithTimeout(response: Response, timeoutMs: number
       new Promise<string>((_, reject) => {
         timer = setTimeout(() => {
           void response.body?.cancel().catch(() => undefined);
-          reject(new HttpError("Web Unlocker response body timed out.", 408));
+          reject(new HttpError("Scraping API response body timed out.", 408));
         }, timeoutMs);
       }),
     ]);

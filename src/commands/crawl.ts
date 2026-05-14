@@ -6,7 +6,7 @@ import { ScrapeFormat } from "../lib/types";
 
 export function buildCrawlCommand(): Command {
   return new Command("crawl")
-    .description("Crawl a website through Gologin Web Unlocker and return per-page extracted content.")
+    .description("Crawl a website through GoLogin Scraping API and return per-page extracted content.")
     .argument("<url>", "Root website URL to crawl")
     .option("--format <format>", "html, markdown, text, or json", "markdown")
     .option("--limit <count>", "Maximum number of pages to visit", "25")

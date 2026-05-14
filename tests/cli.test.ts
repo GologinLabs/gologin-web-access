@@ -15,14 +15,15 @@ test("version command prints the CLI version", async () => {
   });
 
   assert.equal(result.exitCode, 0);
-  assert.equal(result.stdout.trim(), "0.3.3");
+  assert.equal(result.stdout.trim(), "0.3.4");
 });
 
-test("read command explains the recommended two-key setup when Web Unlocker is missing", async () => {
+test("read command explains the recommended two-key setup when Scraping API is missing", async () => {
   const home = await mkdtemp(path.join(os.tmpdir(), "gologin-web-access-cli-"));
   const result = await runSelfCommandCapture(["read", "https://example.com"], {
     env: {
       GOLOGIN_WEB_ACCESS_USE_SOURCE_CLI: "1",
+      GOLOGIN_SCRAPING_API_KEY: "",
       GOLOGIN_WEB_UNLOCKER_API_KEY: "",
       GOLOGIN_WEBUNLOCKER_API_KEY: "",
       GOLOGIN_TOKEN: "",
@@ -34,8 +35,8 @@ test("read command explains the recommended two-key setup when Web Unlocker is m
   });
 
   assert.equal(result.exitCode, 1);
-  assert.match(result.stderr, /Missing GOLOGIN_WEB_UNLOCKER_API_KEY/);
-  assert.match(result.stderr, /configure both GOLOGIN_WEB_UNLOCKER_API_KEY and GOLOGIN_TOKEN/i);
+  assert.match(result.stderr, /Missing GOLOGIN_SCRAPING_API_KEY/);
+  assert.match(result.stderr, /configure both GOLOGIN_SCRAPING_API_KEY and GOLOGIN_TOKEN/i);
   assert.match(result.stderr, /config init/i);
   assert.match(result.stderr, /config show/i);
   assert.match(result.stderr, /doctor/i);
@@ -46,6 +47,7 @@ test("doctor reports whether the recommended two-key setup is complete", async (
   const result = await runSelfCommandCapture(["doctor", "--json"], {
     env: {
       GOLOGIN_WEB_ACCESS_USE_SOURCE_CLI: "1",
+      GOLOGIN_SCRAPING_API_KEY: "",
       GOLOGIN_WEB_UNLOCKER_API_KEY: "",
       GOLOGIN_WEBUNLOCKER_API_KEY: "",
       GOLOGIN_TOKEN: "",
@@ -63,7 +65,7 @@ test("doctor reports whether the recommended two-key setup is complete", async (
   const check = payload.checks.find((entry) => entry.name === "Recommended full setup");
   assert.ok(check);
   assert.equal(check.status, "warn");
-  assert.match(check.detail, /GOLOGIN_WEB_UNLOCKER_API_KEY/);
+  assert.match(check.detail, /GOLOGIN_SCRAPING_API_KEY/);
   assert.match(check.detail, /GOLOGIN_TOKEN/);
 });
 
@@ -77,7 +79,21 @@ test("config init accepts --web-unlocker-key alias", async () => {
   });
 
   assert.equal(result.exitCode, 0);
-  assert.match(result.stdout, /Web Unlocker key/);
+  assert.match(result.stdout, /Scraping API key/);
+  assert.doesNotMatch(result.stderr, /unknown option/i);
+});
+
+test("config init accepts --scraping-api-key", async () => {
+  const home = await mkdtemp(path.join(os.tmpdir(), "gologin-web-access-cli-"));
+  const result = await runSelfCommandCapture(["config", "init", "--scraping-api-key", "wu_test_key", "--no-validate"], {
+    env: {
+      GOLOGIN_WEB_ACCESS_USE_SOURCE_CLI: "1",
+      HOME: home,
+    },
+  });
+
+  assert.equal(result.exitCode, 0);
+  assert.match(result.stdout, /Scraping API key/);
   assert.doesNotMatch(result.stderr, /unknown option/i);
 });
 

@@ -5,7 +5,7 @@ import { mapSite } from "../lib/crawl";
 
 export function buildMapCommand(): Command {
   return new Command("map")
-    .description("Discover internal website links through Gologin Web Unlocker.")
+    .description("Discover internal website links through GoLogin Scraping API.")
     .argument("<url>", "Root website URL to map")
     .option("--limit <count>", "Maximum number of pages to visit", "100")
     .option("--max-depth <depth>", "Maximum link depth from the root URL", "2")

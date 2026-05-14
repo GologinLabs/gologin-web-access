@@ -10,7 +10,7 @@ export function buildSearchCommand(): Command {
     .option("--limit <count>", "Maximum number of results", "10")
     .option("--country <country>", "Country code for Google search", "us")
     .option("--language <language>", "Language for Google search", "en")
-    .option("--source <mode>", "Search path: auto, unlocker, or browser", "auto")
+    .option("--source <mode>", "Search path: auto, scraping, or browser. Legacy alias: unlocker", "auto")
     .action(
       async (
         query: string,
@@ -42,6 +42,10 @@ function normalizeLimit(value: string): number {
 }
 
 function normalizeSource(value: string): "auto" | "unlocker" | "browser" {
+  if (value === "scraping" || value === "scraping-api") {
+    return "unlocker";
+  }
+
   if (value === "auto" || value === "unlocker" || value === "browser") {
     return value;
   }

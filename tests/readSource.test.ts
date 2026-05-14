@@ -4,8 +4,10 @@ import test from "node:test";
 import { assessReadableContent, extractReadableSegmentFromHtml, normalizeReadSourceMode } from "../src/lib/readSource";
 import { htmlToText } from "../src/lib/unlocker";
 
-test("normalizeReadSourceMode accepts auto unlocker and browser", () => {
+test("normalizeReadSourceMode accepts auto scraping/unlocker and browser", () => {
   assert.equal(normalizeReadSourceMode(undefined, "auto"), "auto");
+  assert.equal(normalizeReadSourceMode("scraping", "auto"), "unlocker");
+  assert.equal(normalizeReadSourceMode("scraping-api", "auto"), "unlocker");
   assert.equal(normalizeReadSourceMode("unlocker", "auto"), "unlocker");
   assert.equal(normalizeReadSourceMode("browser", "auto"), "browser");
 });

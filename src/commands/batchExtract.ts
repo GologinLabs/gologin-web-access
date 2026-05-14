@@ -16,7 +16,7 @@ export function buildBatchExtractCommand(): Command {
         .description("Extract structured data from multiple pages using one selector schema.")
         .argument("<urls...>", "One or more URLs")
         .requiredOption("--schema <path>", "Path to a JSON extraction schema")
-        .option("--source <source>", "Read source: auto, unlocker, or browser", "auto")
+        .option("--source <source>", "Read source: auto, scraping, or browser. Legacy alias: unlocker", "auto")
         .option("--concurrency <count>", "Number of concurrent requests", "4")
         .option("--output <path>", "Write the full batch result JSON to a file")
         .option("--summary", "Print one-line summary stats to stderr after the JSON output")
