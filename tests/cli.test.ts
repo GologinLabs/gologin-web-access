@@ -15,7 +15,7 @@ test("version command prints the CLI version", async () => {
   });
 
   assert.equal(result.exitCode, 0);
-  assert.equal(result.stdout.trim(), "0.3.2");
+  assert.equal(result.stdout.trim(), "0.3.3");
 });
 
 test("read command explains the recommended two-key setup when Web Unlocker is missing", async () => {

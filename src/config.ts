@@ -111,7 +111,7 @@ export function requireCloudToken(config: ResolvedConfig): string {
   if (!config.cloudToken) {
     throw new MissingCredentialError(
       ENV_NAMES.cloudToken,
-      "browser commands like `gologin-web-access open`",
+      "browser and GoLogin API commands like `gologin-web-access open` or `gologin-web-access profile-proxy`",
     );
   }
 

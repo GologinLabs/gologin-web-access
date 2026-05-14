@@ -28,6 +28,14 @@ import { buildFindCommand } from "./commands/find";
 import { buildFocusCommand } from "./commands/focus";
 import { buildForwardCommand } from "./commands/forward";
 import { buildGetCommand } from "./commands/get";
+import {
+  buildCloudUsageCommand,
+  buildProfileCloudCommand,
+  buildProfileCookiesCommand,
+  buildProfileFingerprintCommand,
+  buildProfileProxyCommand,
+  buildProfileUaCommand,
+} from "./commands/gologinApi";
 import { buildHoverCommand } from "./commands/hover";
 import { buildJobCommand, buildJobsCommand } from "./commands/jobs";
 import { buildMapCommand } from "./commands/map";
@@ -66,7 +74,7 @@ import { runDoctor } from "./doctor";
 import { toCliError } from "./lib/errors";
 import { printError, printText } from "./lib/output";
 
-const CLI_VERSION = "0.3.2";
+const CLI_VERSION = "0.3.3";
 
 async function main(): Promise<void> {
   const program = new Command();
@@ -141,6 +149,13 @@ async function main(): Promise<void> {
   program.addCommand(buildSessionsCommand());
   program.addCommand(buildCurrentCommand());
 
+  program.addCommand(buildCloudUsageCommand());
+  program.addCommand(buildProfileCloudCommand());
+  program.addCommand(buildProfileCookiesCommand());
+  program.addCommand(buildProfileFingerprintCommand());
+  program.addCommand(buildProfileProxyCommand());
+  program.addCommand(buildProfileUaCommand());
+
   program
     .command("doctor")
     .description("Inspect both recommended keys, profile configuration, and local daemon health.")
@@ -172,6 +187,7 @@ Quick picks:
 Command groups:
   Scraping: gologin-web-access scrape|read|scrape-markdown|scrape-text|scrape-json|batch-scrape|batch-extract|search|map|crawl|crawl-start|crawl-status|crawl-result|crawl-errors|extract|change-track|batch-change-track|parse-document
   Browser:  gologin-web-access open|search-browser|scrape-screenshot|tabs|tabopen|tabfocus|tabclose|snapshot|click|dblclick|focus|type|fill|hover|select|check|uncheck|press|scroll|scrollintoview|wait|get|back|forward|reload|find|cookies|cookies-import|cookies-clear|storage-export|storage-import|storage-clear|eval|upload|pdf|screenshot|close|sessions|current
+  GoLogin API: gologin-web-access cloud-usage|profile-cloud|profile-cookies|profile-fingerprint|profile-proxy|profile-ua
   Agent:    gologin-web-access run|batch|jobs|job
 
 Key model:

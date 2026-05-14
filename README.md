@@ -7,6 +7,7 @@ This is a unified web access layer, not just a scraping tool and not just a brow
 - Read the web through stateless extraction APIs
 - Interact with the web through stateful cloud browser sessions
 - Carry Gologin’s browser-side strengths into those workflows: profiles, identity-aware browser sessions, cloud browser infrastructure, and Gologin’s profile/proxy stack when you run against a configured profile
+- Manage common GoLogin profile/proxy API operations without leaving the CLI: cloud usage, cloud profile start/stop, profile cookies, fingerprint refresh, managed proxies, and user-agent updates
 
 Package name and binary are the same:
 
@@ -108,6 +109,24 @@ These commands use Gologin Cloud Browser through the local daemon-backed agent l
 
 Use these when you need state, interaction, or multi-step browser flows.
 
+### GoLogin API Helpers
+
+These commands use the GoLogin REST API directly through `GOLOGIN_TOKEN`. They do not require Web Unlocker and do not start the browser daemon:
+
+- `gologin-web-access cloud-usage --profile <profileId> | --workspace <workspaceId> [--days <1-30>] [--json]`
+- `gologin-web-access profile-cloud start <profileId> [--json]`
+- `gologin-web-access profile-cloud stop <profileId> [--json]`
+- `gologin-web-access profile-cookies export <profileId> [--output <path>] [--json]`
+- `gologin-web-access profile-cookies import <profileId> <cookies.json> [--clean] [--json]`
+- `gologin-web-access profile-fingerprint refresh <profileId...> [--json]`
+- `gologin-web-access profile-proxy list [--page <n>] [--json]`
+- `gologin-web-access profile-proxy traffic`
+- `gologin-web-access profile-proxy add-gologin <profileId> --country <cc> [--city <city>] [--type residential|mobile|dc] [--json]`
+- `gologin-web-access profile-ua latest [--os lin|mac|win|android|android-cloud] [--json]`
+- `gologin-web-access profile-ua update <profileId...> [--all-profiles] [--workspace <id>] [--json]`
+
+Use these when an agent needs GoLogin account/profile operations and would otherwise drop into raw REST calls or SDK code.
+
 ## When To Use `scrape` vs `browser`
 
 - Use `scrape` commands when you need page content, extracted text, markdown, or simple structured output.
@@ -124,6 +143,7 @@ Use these when you need state, interaction, or multi-step browser flows.
 - Use `batch-change-track` when you want to monitor a watchlist of pages in one pass.
 - Use `parse-document` when the source is a PDF, DOCX, XLSX, HTML, or local document path instead of a normal HTML page.
 - Use browser commands when you need clicks, forms, navigation, screenshots, sessions, or logged-in/profile-backed flows.
+- Use GoLogin API helper commands when you need to attach managed proxy traffic, export/import profile cookies, refresh fingerprints, update user agents, inspect usage, or start/stop a cloud profile.
 - Use browser commands when you need ref-based interaction, uploads, PDFs, semantic find flows, keyboard control, or a browser-visible search journey.
 - Use `run` and `batch` when you want reusable workflows or multi-target execution on top of the CLI surface.
 - Use `scrape` when stateless speed matters more than interaction.
@@ -168,7 +188,7 @@ This CLI uses two different GoLogin credentials on purpose, because the underlyi
 - `GOLOGIN_WEB_UNLOCKER_API_KEY`
   Required for Scraping / Read commands.
 - `GOLOGIN_TOKEN`
-  Required for `gologin-web-access open` and for profile validation in `gologin-web-access doctor`.
+  Required for `gologin-web-access open`, GoLogin API helper commands, and profile validation in `gologin-web-access doctor`.
 - `GOLOGIN_DEFAULT_PROFILE_ID`
   Optional default profile for browser flows.
 - `GOLOGIN_DAEMON_PORT`
@@ -285,6 +305,20 @@ gologin-web-access storage-export ./storage.json
 gologin-web-access screenshot ./page.png
 gologin-web-access current
 gologin-web-access close
+```
+
+### Manage Profiles And Proxies
+
+```bash
+export GOLOGIN_TOKEN="gl_..."
+
+gologin-web-access cloud-usage --profile profile_123
+gologin-web-access profile-proxy add-gologin profile_123 --country us --type residential
+gologin-web-access profile-proxy traffic
+gologin-web-access profile-cookies export profile_123 --output ./cookies.json
+gologin-web-access profile-fingerprint refresh profile_123
+gologin-web-access profile-ua latest --os mac
+gologin-web-access profile-ua update profile_123
 ```
 
 ### Search In A Real Browser

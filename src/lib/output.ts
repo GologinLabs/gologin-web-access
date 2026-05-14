@@ -10,7 +10,7 @@ export function printText(value: string): void {
 }
 
 export function printJson(value: unknown): void {
-  printText(JSON.stringify(value, null, 2));
+  printText(JSON.stringify(value ?? null, null, 2));
 }
 
 export function printError(error: CliError): void {
