@@ -15,12 +15,12 @@ function makeConfig(): ResolvedConfig {
     jobsDir: path.join(stateDir, "jobs"),
     trackingDir: path.join(stateDir, "tracking"),
     artifactsDir: path.join(stateDir, "artifacts"),
-    webUnlockerApiKey: undefined,
+    scrapingApiKey: undefined,
     cloudToken: undefined,
     defaultProfileId: undefined,
     daemonPort: 4590,
     sources: {
-      webUnlockerApiKey: "unset",
+      scrapingApiKey: "unset",
       cloudToken: "unset",
       defaultProfileId: "unset",
       daemonPort: "default"

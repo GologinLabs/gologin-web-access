@@ -2,7 +2,7 @@ import path from "path";
 import { Command } from "commander";
 import { loadConfig, requireCloudToken, resolveProfileId } from "../config";
 import { runAgentCommand } from "../lib/agentCli";
-import type { ScrapeRequestOptions } from "../lib/unlocker";
+import type { ScrapeRequestOptions } from "../lib/scrapingApi";
 
 export function addSessionOption(command: Command): Command {
   return command.option("--session <id>", "Session ID. Defaults to the current session.");
@@ -86,14 +86,14 @@ export function resolveOutputPath(targetPath: string): string {
   return path.resolve(targetPath);
 }
 
-export function addUnlockerRequestOptions(command: Command): Command {
+export function addScrapingApiRequestOptions(command: Command): Command {
   return command
     .option("--retry <count>", "Retry attempts for timeout, 429, and 5xx responses")
     .option("--backoff-ms <ms>", "Base exponential backoff in milliseconds for retried requests")
     .option("--timeout-ms <ms>", "Per-request timeout in milliseconds");
 }
 
-export function normalizeUnlockerRequestOptions(options: {
+export function normalizeScrapingApiRequestOptions(options: {
   retry?: string;
   backoffMs?: string;
   timeoutMs?: string;

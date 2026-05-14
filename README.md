@@ -229,7 +229,7 @@ You can also write a minimal config file at `~/.gologin-web-access/config.json`:
 
 ```json
 {
-  "webUnlockerApiKey": "wu_...",
+  "scrapingApiKey": "wu_...",
   "cloudToken": "gl_...",
   "defaultProfileId": "profile_123",
   "daemonPort": 4590

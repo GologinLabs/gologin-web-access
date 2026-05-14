@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { loadConfig, requireWebUnlockerKey } from "../config";
+import { loadConfig, requireScrapingApiKey } from "../config";
 import { crawlSite } from "../lib/crawl";
 import { printJson } from "../lib/output";
 import { ScrapeFormat } from "../lib/types";
@@ -37,7 +37,7 @@ export function buildCrawlCommand(): Command {
         },
       ) => {
         const config = await loadConfig();
-        const apiKey = requireWebUnlockerKey(config);
+        const apiKey = requireScrapingApiKey(config);
         const format = normalizeFormat(options.format);
         const result = await crawlSite(url, apiKey, format, {
           limit: normalizePositiveInt(options.limit, 25),

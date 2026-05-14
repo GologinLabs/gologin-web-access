@@ -2,7 +2,7 @@ import { Command } from "commander";
 import { DEFAULT_DAEMON_PORT, ENV_NAMES, initConfigFile } from "../config";
 import { validateCloudToken } from "../lib/cloudApi";
 import { printKeyValueRows, printText } from "../lib/output";
-import { validateWebUnlockerKey } from "../lib/unlocker";
+import { validateScrapingApiKey } from "../lib/scrapingApi";
 
 export function buildConfigInitCommand(): Command {
   return new Command("init")
@@ -18,9 +18,9 @@ export function buildConfigInitCommand(): Command {
     .option("--force", "Overwrite an existing config file")
     .action(
       async (options: {
+        scrapingApiKey?: string;
         webUnlockerApiKey?: string;
         webUnlockerKey?: string;
-        scrapingApiKey?: string;
         token?: string;
         cloudToken?: string;
         defaultProfileId?: string;
@@ -28,16 +28,16 @@ export function buildConfigInitCommand(): Command {
         validate?: boolean;
         force?: boolean;
       }) => {
-        const webUnlockerApiKey =
+        const scrapingApiKey =
           options.scrapingApiKey ??
           options.webUnlockerApiKey ??
           options.webUnlockerKey ??
-          process.env[ENV_NAMES.webUnlockerApiKey] ??
+          process.env[ENV_NAMES.scrapingApiKey] ??
           process.env.GOLOGIN_WEB_UNLOCKER_API_KEY ??
           process.env.GOLOGIN_WEBUNLOCKER_API_KEY;
         const result = await initConfigFile(
           {
-            webUnlockerApiKey,
+            scrapingApiKey,
             cloudToken:
               options.token ??
               options.cloudToken ??
@@ -60,7 +60,7 @@ export function buildConfigInitCommand(): Command {
           { label: "Config file", value: result.path },
           {
             label: "Scraping API key",
-            value: result.config.webUnlockerApiKey ? "written" : "left empty",
+            value: result.config.scrapingApiKey ? "written" : "left empty",
           },
           {
             label: "GoLogin token",
@@ -76,7 +76,7 @@ export function buildConfigInitCommand(): Command {
           },
         ]);
 
-        if (!result.config.webUnlockerApiKey || !result.config.cloudToken) {
+        if (!result.config.scrapingApiKey || !result.config.cloudToken) {
           printText(
             "Recommended next step: configure both GOLOGIN_SCRAPING_API_KEY and GOLOGIN_TOKEN so agents can use scraping and browser flows without asking again.",
           );
@@ -87,8 +87,8 @@ export function buildConfigInitCommand(): Command {
         }
 
         const validationRows: Array<{ label: string; value: string }> = [];
-        if (result.config.webUnlockerApiKey) {
-          const validation = await validateWebUnlockerKey(result.config.webUnlockerApiKey);
+        if (result.config.scrapingApiKey) {
+          const validation = await validateScrapingApiKey(result.config.scrapingApiKey);
           validationRows.push({
             label: "Scraping API validation",
             value: validation.ok ? "ok" : `failed${validation.status ? ` (${validation.status})` : ""}: ${validation.detail}`,

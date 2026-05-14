@@ -2,11 +2,11 @@ import type { ResolvedConfig } from "./types";
 import type { ExtractSchema } from "./extract";
 import { extractWithSchema } from "./extract";
 import { normalizeReadSourceMode, readRenderedHtmlContent, type ReadSourceMode } from "./readSource";
-import type { ScrapeRequestOptions } from "./unlocker";
+import type { ScrapeRequestOptions } from "./scrapingApi";
 
 export interface ExtractUrlResult {
   url: string;
-  renderSource: "unlocker" | "browser";
+  renderSource: "scraping" | "browser";
   fallbackAttempted: boolean;
   fallbackUsed: boolean;
   fallbackReason?: string;

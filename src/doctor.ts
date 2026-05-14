@@ -13,8 +13,8 @@ export async function runDoctor(options: { json?: boolean } = {}): Promise<void>
 
   checks.push({
     name: "Scraping API key",
-    status: config.webUnlockerApiKey ? "ok" : "warn",
-    detail: config.webUnlockerApiKey ? `configured via ${config.sources.webUnlockerApiKey}` : "missing",
+    status: config.scrapingApiKey ? "ok" : "warn",
+    detail: config.scrapingApiKey ? `configured via ${config.sources.scrapingApiKey}` : "missing",
   });
 
   checks.push({

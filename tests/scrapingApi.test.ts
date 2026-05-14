@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { scrapeJson, scrapeText } from "../src/lib/unlocker";
+import { scrapeJson, scrapeText } from "../src/lib/scrapingApi";
 
 test("scrapeJson groups headings by level and strips inline script content", async () => {
   const originalFetch = globalThis.fetch;

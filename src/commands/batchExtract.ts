@@ -1,17 +1,17 @@
 import { promises as fs } from "fs";
 import path from "path";
 import { Command } from "commander";
-import { loadConfig, requireWebUnlockerKey } from "../config";
+import { loadConfig, requireScrapingApiKey } from "../config";
 import type { ExtractSchema } from "../lib/extract";
 import { extractUrlWithSchema } from "../lib/extractRunner";
 import { mapWithConcurrency } from "../lib/concurrency";
 import { printJson } from "../lib/output";
 import { normalizeReadSourceMode } from "../lib/readSource";
-import { addProfileOption, addUnlockerRequestOptions, normalizeUnlockerRequestOptions } from "./shared";
+import { addProfileOption, addScrapingApiRequestOptions, normalizeScrapingApiRequestOptions } from "./shared";
 
 export function buildBatchExtractCommand(): Command {
   return addProfileOption(
-    addUnlockerRequestOptions(
+    addScrapingApiRequestOptions(
       new Command("batch-extract")
         .description("Extract structured data from multiple pages using one selector schema.")
         .argument("<urls...>", "One or more URLs")
@@ -37,10 +37,10 @@ export function buildBatchExtractCommand(): Command {
           ) => {
             const config = await loadConfig();
             const source = normalizeReadSourceMode(options.source, "auto");
-            const apiKey = source === "browser" ? "" : requireWebUnlockerKey(config);
+            const apiKey = source === "browser" ? "" : requireScrapingApiKey(config);
             const schema = await readSchema(path.resolve(options.schema));
             const concurrency = Math.max(1, Number(options.concurrency) || 4);
-            const request = normalizeUnlockerRequestOptions(options);
+            const request = normalizeScrapingApiRequestOptions(options);
 
             const results = await mapWithConcurrency(urls, concurrency, async (url) => {
               try {

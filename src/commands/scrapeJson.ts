@@ -1,12 +1,12 @@
 import { Command } from "commander";
-import { loadConfig, requireWebUnlockerKey } from "../config";
+import { loadConfig, requireScrapingApiKey } from "../config";
 import { printJson } from "../lib/output";
 import { normalizeStructuredFallbackMode, scrapeStructuredJson } from "../lib/structuredScrape";
-import { addProfileOption, addUnlockerRequestOptions, normalizeUnlockerRequestOptions } from "./shared";
+import { addProfileOption, addScrapingApiRequestOptions, normalizeScrapingApiRequestOptions } from "./shared";
 
 export function buildScrapeJsonCommand(): Command {
   return addProfileOption(
-    addUnlockerRequestOptions(
+    addScrapingApiRequestOptions(
       new Command("scrape-json")
     .description("Fetch a page through Scraping API and print a structured JSON envelope.")
     .argument("<url>", "URL to scrape")
@@ -23,15 +23,15 @@ export function buildScrapeJsonCommand(): Command {
         },
       ) => {
       const config = await loadConfig();
-      const apiKey = requireWebUnlockerKey(config);
+      const apiKey = requireScrapingApiKey(config);
       const envelope = await scrapeStructuredJson(url, config, apiKey, {
         fallback: normalizeStructuredFallbackMode(options.fallback),
         profile: options.profile,
-        request: normalizeUnlockerRequestOptions(options),
+        request: normalizeScrapingApiRequestOptions(options),
       });
       if (envelope.fallbackAttempted) {
         const fallbackStatus = envelope.fallbackUsed
-          ? "Browser fallback succeeded and replaced the unlocker result."
+          ? "Browser fallback succeeded and replaced the Scraping API result."
           : `Browser fallback was attempted but not used. ${envelope.fallbackReason ?? "It did not improve the structured output."}`;
         process.stderr.write(`${fallbackStatus}\n`);
       }

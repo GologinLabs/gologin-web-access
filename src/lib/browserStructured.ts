@@ -3,7 +3,7 @@ import { resolveProfileId } from "../config";
 import { runAgentCommandCapture } from "./agentCli";
 import { createBrowserCommandError } from "./errors";
 import type { ResolvedConfig } from "./types";
-import type { ScrapeJsonData } from "./unlocker";
+import type { ScrapeJsonData } from "./scrapingApi";
 
 const MAX_HEADINGS = 50;
 const MAX_LINKS = 100;

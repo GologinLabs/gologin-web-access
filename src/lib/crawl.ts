@@ -6,7 +6,7 @@ import {
   htmlToText,
   scrapeRenderedHtml,
   ScrapeJsonData,
-} from "./unlocker";
+} from "./scrapingApi";
 
 export interface CrawlOptions {
   limit: number;

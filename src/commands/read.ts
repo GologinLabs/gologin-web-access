@@ -1,15 +1,15 @@
 import { Command } from "commander";
-import { loadConfig, requireWebUnlockerKey } from "../config";
+import { loadConfig, requireScrapingApiKey } from "../config";
 import { describeNextActionHint } from "../lib/pageOutcome";
 import { readHtmlContent, readMarkdownContent, readTextContent, normalizeReadSourceMode, type ReadContentEnvelope } from "../lib/readSource";
 import { printText } from "../lib/output";
-import { addProfileOption, addUnlockerRequestOptions, normalizeUnlockerRequestOptions } from "./shared";
+import { addProfileOption, addScrapingApiRequestOptions, normalizeScrapingApiRequestOptions } from "./shared";
 
 type ReadFormat = "html" | "markdown" | "text";
 
 export function buildReadCommand(): Command {
   return addProfileOption(
-    addUnlockerRequestOptions(
+    addScrapingApiRequestOptions(
       new Command("read")
         .description("Read the main content of a docs page or article with automatic fallback to Cloud Browser when needed.")
         .argument("<url>", "URL to read")
@@ -26,11 +26,11 @@ export function buildReadCommand(): Command {
           const config = await loadConfig();
           const format = normalizeReadFormat(options.format);
           const source = normalizeReadSourceMode(options.source, "auto");
-          const apiKey = source === "browser" ? "" : requireWebUnlockerKey(config);
+          const apiKey = source === "browser" ? "" : requireScrapingApiKey(config);
           const readOptions = {
             source,
             profile: options.profile,
-            request: normalizeUnlockerRequestOptions(options),
+            request: normalizeScrapingApiRequestOptions(options),
           };
 
           const result = format === "html"

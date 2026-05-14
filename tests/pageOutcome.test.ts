@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { assessReadablePageOutcome, assessStructuredPageOutcome, describeNextActionHint } from "../src/lib/pageOutcome";
-import type { ScrapeJsonData } from "../src/lib/unlocker";
+import type { ScrapeJsonData } from "../src/lib/scrapingApi";
 
 function makeData(overrides: Partial<ScrapeJsonData> = {}): ScrapeJsonData {
   return {

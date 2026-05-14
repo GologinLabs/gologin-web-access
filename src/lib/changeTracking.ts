@@ -4,7 +4,7 @@ import path from "path";
 import { createPatch } from "diff";
 
 import { ResolvedConfig, ScrapeFormat } from "./types";
-import { type ScrapeRequestMeta, type ScrapeRequestOptions, scrapeJson, scrapeMarkdown, scrapeRenderedHtml, scrapeText } from "./unlocker";
+import { type ScrapeRequestMeta, type ScrapeRequestOptions, scrapeJson, scrapeMarkdown, scrapeRenderedHtml, scrapeText } from "./scrapingApi";
 
 export interface TrackedSnapshot {
   key: string;

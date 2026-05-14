@@ -5,7 +5,7 @@ import mammoth from "mammoth";
 import { PDFParse } from "pdf-parse";
 import * as XLSX from "xlsx";
 
-import { htmlToText } from "./unlocker";
+import { htmlToText } from "./scrapingApi";
 
 export interface ParsedDocument {
   source: string;

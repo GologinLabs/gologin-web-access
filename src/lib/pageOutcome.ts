@@ -1,5 +1,5 @@
 import { load } from "cheerio";
-import type { ScrapeJsonData } from "./unlocker";
+import type { ScrapeJsonData } from "./scrapingApi";
 
 export type PageOutcome = "ok" | "empty" | "incomplete" | "authwall" | "challenge" | "blocked" | "cookie_wall";
 export type NextActionHint = "retry_with_browser" | "use_logged_in_session" | "use_local_profile";

@@ -1,12 +1,12 @@
 import { Command } from "commander";
-import { loadConfig, requireWebUnlockerKey } from "../config";
+import { loadConfig, requireScrapingApiKey } from "../config";
 import { describeNextActionHint } from "../lib/pageOutcome";
 import { normalizeReadSourceMode, readMarkdownContent, type ReadContentEnvelope } from "../lib/readSource";
-import { addUnlockerRequestOptions, normalizeUnlockerRequestOptions } from "./shared";
+import { addScrapingApiRequestOptions, normalizeScrapingApiRequestOptions } from "./shared";
 import { printText } from "../lib/output";
 
 export function buildScrapeMarkdownCommand(): Command {
-  return addUnlockerRequestOptions(
+  return addScrapingApiRequestOptions(
     new Command("scrape-markdown")
     .description("Fetch a page through Scraping API and print Markdown.")
     .argument("<url>", "URL to scrape")
@@ -14,10 +14,10 @@ export function buildScrapeMarkdownCommand(): Command {
     .action(async (url: string, options: { source?: string; retry?: string; backoffMs?: string; timeoutMs?: string }) => {
       const config = await loadConfig();
       const source = normalizeReadSourceMode(options.source, "auto");
-      const apiKey = source === "browser" ? "" : requireWebUnlockerKey(config);
+      const apiKey = source === "browser" ? "" : requireScrapingApiKey(config);
       const result = await readMarkdownContent(url, config, apiKey, {
         source,
-        request: normalizeUnlockerRequestOptions(options),
+        request: normalizeScrapingApiRequestOptions(options),
       });
       emitReadNotice(result);
       printText(result.content);

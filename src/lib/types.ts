@@ -1,7 +1,7 @@
 export type ConfigSource = "env" | "file" | "default" | "unset";
 
 export interface StoredConfig {
-  webUnlockerApiKey?: string;
+  scrapingApiKey?: string;
   cloudToken?: string;
   defaultProfileId?: string;
   daemonPort?: number;
@@ -15,7 +15,7 @@ export interface ResolvedConfig extends StoredConfig {
   trackingDir: string;
   artifactsDir: string;
   sources: {
-    webUnlockerApiKey: ConfigSource;
+    scrapingApiKey: ConfigSource;
     cloudToken: ConfigSource;
     defaultProfileId: ConfigSource;
     daemonPort: ConfigSource;

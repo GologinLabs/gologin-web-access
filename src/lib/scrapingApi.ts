@@ -1,6 +1,6 @@
 import { HttpError } from "./errors";
 
-const DEFAULT_BASE_URL = "https://parsing.webunlocker.gologin.com";
+const DEFAULT_BASE_URL = "https://parsing.webscraping.gologin.com";
 const DEFAULT_TIMEOUT_MS = 15_000;
 const DEFAULT_MAX_RETRIES = 2;
 const MAX_EXTRACTED_LINKS = 100;
@@ -48,7 +48,7 @@ export interface ScrapeJsonResult extends ScrapeResult {
   data: ScrapeJsonData;
 }
 
-interface WebUnlockerOptions {
+interface ScrapingApiOptions {
   apiKey: string;
   baseUrl?: string;
   timeoutMs?: number;
@@ -75,14 +75,14 @@ export interface ScrapeRequestMeta {
   attempts: ScrapeRequestAttempt[];
 }
 
-class WebUnlockerClient {
+class ScrapingApiClient {
   private readonly apiKey: string;
   private readonly baseUrl: string;
   private readonly timeoutMs: number;
   private readonly maxRetries: number;
   private readonly backoffMs: number;
 
-  public constructor(options: WebUnlockerOptions) {
+  public constructor(options: ScrapingApiOptions) {
     this.apiKey = options.apiKey;
     this.baseUrl = normalizeBaseUrl(options.baseUrl ?? DEFAULT_BASE_URL);
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
@@ -137,7 +137,7 @@ export async function scrapeRenderedHtml(
   apiKey: string,
   options: ScrapeRequestOptions = {},
 ): Promise<ScrapeResult> {
-  return createWebUnlockerClient(apiKey).scrape(url, options);
+  return createScrapingApiClient(apiKey).scrape(url, options);
 }
 
 export async function scrapeText(
@@ -145,7 +145,7 @@ export async function scrapeText(
   apiKey: string,
   options: ScrapeRequestOptions = {},
 ): Promise<ScrapeTextResult> {
-  const scraped = await createWebUnlockerClient(apiKey).scrape(url, options);
+  const scraped = await createScrapingApiClient(apiKey).scrape(url, options);
   return {
     ...scraped,
     text: htmlToText(scraped.content),
@@ -157,7 +157,7 @@ export async function scrapeMarkdown(
   apiKey: string,
   options: ScrapeRequestOptions = {},
 ): Promise<ScrapeMarkdownResult> {
-  const scraped = await createWebUnlockerClient(apiKey).scrape(url, options);
+  const scraped = await createScrapingApiClient(apiKey).scrape(url, options);
   return {
     ...scraped,
     markdown: htmlToMarkdown(scraped.content),
@@ -169,14 +169,14 @@ export async function scrapeJson(
   apiKey: string,
   options: ScrapeRequestOptions = {},
 ): Promise<ScrapeJsonResult> {
-  const scraped = await createWebUnlockerClient(apiKey).scrape(url, options);
+  const scraped = await createScrapingApiClient(apiKey).scrape(url, options);
   return {
     ...scraped,
     data: htmlToStructuredData(scraped.content),
   };
 }
 
-export async function validateWebUnlockerKey(
+export async function validateScrapingApiKey(
   apiKey: string,
 ): Promise<{ ok: true } | { ok: false; status?: number; detail: string }> {
   try {
@@ -201,8 +201,8 @@ export async function validateWebUnlockerKey(
   }
 }
 
-function createWebUnlockerClient(apiKey: string): WebUnlockerClient {
-  return new WebUnlockerClient({ apiKey });
+function createScrapingApiClient(apiKey: string): ScrapingApiClient {
+  return new ScrapingApiClient({ apiKey });
 }
 
 async function fetchWithRetry(

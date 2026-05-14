@@ -1,18 +1,18 @@
 import { Command } from "commander";
-import { loadConfig, requireWebUnlockerKey } from "../config";
-import { addUnlockerRequestOptions, normalizeUnlockerRequestOptions } from "./shared";
+import { loadConfig, requireScrapingApiKey } from "../config";
+import { addScrapingApiRequestOptions, normalizeScrapingApiRequestOptions } from "./shared";
 import { printText } from "../lib/output";
-import { scrapeRenderedHtml } from "../lib/unlocker";
+import { scrapeRenderedHtml } from "../lib/scrapingApi";
 
 export function buildScrapeCommand(): Command {
-  return addUnlockerRequestOptions(
+  return addScrapingApiRequestOptions(
     new Command("scrape")
     .description("Fetch rendered HTML through GoLogin Scraping API.")
     .argument("<url>", "URL to scrape")
     .action(async (url: string, options: { retry?: string; backoffMs?: string; timeoutMs?: string }) => {
       const config = await loadConfig();
-      const apiKey = requireWebUnlockerKey(config);
-      const result = await scrapeRenderedHtml(url, apiKey, normalizeUnlockerRequestOptions(options));
+      const apiKey = requireScrapingApiKey(config);
+      const result = await scrapeRenderedHtml(url, apiKey, normalizeScrapingApiRequestOptions(options));
       printText(result.content);
     }),
   );

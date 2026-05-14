@@ -1,11 +1,11 @@
 import { promises as fs } from "fs";
 import path from "path";
 import { Command } from "commander";
-import { loadConfig, requireWebUnlockerKey } from "../config";
+import { loadConfig, requireScrapingApiKey } from "../config";
 import { buildTrackingKey, compareAndPersistSnapshot, normalizeTrackingFormat, scrapeForTracking } from "../lib/changeTracking";
 import { mapWithConcurrency } from "../lib/concurrency";
 import { printJson } from "../lib/output";
-import { addUnlockerRequestOptions, normalizeUnlockerRequestOptions } from "./shared";
+import { addScrapingApiRequestOptions, normalizeScrapingApiRequestOptions } from "./shared";
 
 type BatchChangeTrackResult =
   | {
@@ -29,7 +29,7 @@ type BatchChangeTrackResult =
     };
 
 export function buildBatchChangeTrackCommand(): Command {
-  return addUnlockerRequestOptions(
+  return addScrapingApiRequestOptions(
     new Command("batch-change-track")
       .description("Track multiple pages over time and report which ones are new, same, or changed.")
       .argument("<urls...>", "One or more URLs")
@@ -51,10 +51,10 @@ export function buildBatchChangeTrackCommand(): Command {
           },
         ) => {
           const config = await loadConfig();
-          const apiKey = requireWebUnlockerKey(config);
+          const apiKey = requireScrapingApiKey(config);
           const format = normalizeTrackingFormat(options.format);
           const concurrency = Math.max(1, Number(options.concurrency) || 4);
-          const requestOptions = normalizeUnlockerRequestOptions(options);
+          const requestOptions = normalizeScrapingApiRequestOptions(options);
 
           const results = await mapWithConcurrency(urls, concurrency, async (url): Promise<BatchChangeTrackResult> => {
             try {

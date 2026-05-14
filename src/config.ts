@@ -11,14 +11,14 @@ const CONFIG_FILENAME = "config.json";
 
 export const DEFAULT_DAEMON_PORT = 4590;
 export const ENV_NAMES = {
-  webUnlockerApiKey: "GOLOGIN_SCRAPING_API_KEY",
+  scrapingApiKey: "GOLOGIN_SCRAPING_API_KEY",
   cloudToken: "GOLOGIN_TOKEN",
   defaultProfileId: "GOLOGIN_DEFAULT_PROFILE_ID",
   daemonPort: "GOLOGIN_DAEMON_PORT",
 } as const;
 
 const LEGACY_ENV_NAMES = {
-  webUnlockerApiKey: ["GOLOGIN_WEB_UNLOCKER_API_KEY", "GOLOGIN_WEBUNLOCKER_API_KEY"],
+  scrapingApiKey: ["GOLOGIN_WEB_UNLOCKER_API_KEY", "GOLOGIN_WEBUNLOCKER_API_KEY"],
   cloudToken: ["GOLOGIN_CLOUD_TOKEN"],
   defaultProfileId: ["GOLOGIN_PROFILE_ID"],
   daemonPort: [],
@@ -32,12 +32,12 @@ export async function loadConfig(): Promise<ResolvedConfig> {
   const configPath = await resolveConfigPath();
   const stateDir = path.dirname(configPath);
   const fileConfig = await readConfigFile(configPath);
-  const webUnlockerEnv = firstEnvValue(ENV_NAMES.webUnlockerApiKey, LEGACY_ENV_NAMES.webUnlockerApiKey);
+  const scrapingApiEnv = firstEnvValue(ENV_NAMES.scrapingApiKey, LEGACY_ENV_NAMES.scrapingApiKey);
   const cloudTokenEnv = firstEnvValue(ENV_NAMES.cloudToken, LEGACY_ENV_NAMES.cloudToken);
   const profileEnv = firstEnvValue(ENV_NAMES.defaultProfileId, LEGACY_ENV_NAMES.defaultProfileId);
   const daemonPortEnv = firstEnvValue(ENV_NAMES.daemonPort, LEGACY_ENV_NAMES.daemonPort);
 
-  const webUnlockerApiKey = pickString(webUnlockerEnv, fileConfig.webUnlockerApiKey);
+  const scrapingApiKey = pickString(scrapingApiEnv, fileConfig.scrapingApiKey);
   const cloudToken = pickString(cloudTokenEnv, fileConfig.cloudToken);
   const defaultProfileId = pickString(profileEnv, fileConfig.defaultProfileId);
   const daemonPort = pickNumber(daemonPortEnv, fileConfig.daemonPort, DEFAULT_DAEMON_PORT);
@@ -48,12 +48,12 @@ export async function loadConfig(): Promise<ResolvedConfig> {
     jobsDir: path.join(stateDir, "jobs"),
     trackingDir: path.join(stateDir, "tracking"),
     artifactsDir: path.join(stateDir, "artifacts"),
-    webUnlockerApiKey,
+    scrapingApiKey,
     cloudToken,
     defaultProfileId,
     daemonPort,
     sources: {
-      webUnlockerApiKey: resolveSource(webUnlockerEnv, fileConfig.webUnlockerApiKey),
+      scrapingApiKey: resolveSource(scrapingApiEnv, fileConfig.scrapingApiKey),
       cloudToken: resolveSource(cloudTokenEnv, fileConfig.cloudToken),
       defaultProfileId: resolveSource(profileEnv, fileConfig.defaultProfileId),
       daemonPort: resolveNumberSource(daemonPortEnv, fileConfig.daemonPort),
@@ -81,7 +81,7 @@ export async function initConfigFile(
   }
 
   const nextConfig: StoredConfig = {
-    webUnlockerApiKey: overrides.webUnlockerApiKey,
+    scrapingApiKey: overrides.scrapingApiKey,
     cloudToken: overrides.cloudToken,
     defaultProfileId: overrides.defaultProfileId,
     daemonPort: overrides.daemonPort ?? DEFAULT_DAEMON_PORT,
@@ -96,15 +96,15 @@ export async function initConfigFile(
   };
 }
 
-export function requireWebUnlockerKey(config: ResolvedConfig): string {
-  if (!config.webUnlockerApiKey) {
+export function requireScrapingApiKey(config: ResolvedConfig): string {
+  if (!config.scrapingApiKey) {
     throw new MissingCredentialError(
-      ENV_NAMES.webUnlockerApiKey,
+      ENV_NAMES.scrapingApiKey,
       "scraping commands like `gologin-web-access scrape`",
     );
   }
 
-  return config.webUnlockerApiKey;
+  return config.scrapingApiKey;
 }
 
 export function requireCloudToken(config: ResolvedConfig): string {
@@ -129,8 +129,8 @@ export function getRecommendedCredentialStatus(config: ResolvedConfig): {
 } {
   const missing: string[] = [];
 
-  if (!config.webUnlockerApiKey) {
-    missing.push(ENV_NAMES.webUnlockerApiKey);
+  if (!config.scrapingApiKey) {
+    missing.push(ENV_NAMES.scrapingApiKey);
   }
 
   if (!config.cloudToken) {
@@ -160,8 +160,8 @@ export function getMaskedConfigRows(config: ResolvedConfig): Array<{ label: stri
       value: config.configPath,
     },
     {
-      label: ENV_NAMES.webUnlockerApiKey,
-      value: describeValue(config.webUnlockerApiKey, config.sources.webUnlockerApiKey),
+      label: ENV_NAMES.scrapingApiKey,
+      value: describeValue(config.scrapingApiKey, config.sources.scrapingApiKey),
     },
     {
       label: ENV_NAMES.cloudToken,
@@ -185,10 +185,10 @@ export function getMaskedConfigRows(config: ResolvedConfig): Array<{ label: stri
 async function readConfigFile(configPath: string): Promise<StoredConfig> {
   try {
     const raw = await fs.readFile(configPath, "utf8");
-    const parsed = JSON.parse(raw) as StoredConfig;
+    const parsed = JSON.parse(raw) as StoredConfig & { webUnlockerApiKey?: string };
 
     return {
-      webUnlockerApiKey: normalizeString(parsed.webUnlockerApiKey),
+      scrapingApiKey: normalizeString(parsed.scrapingApiKey ?? parsed.webUnlockerApiKey),
       cloudToken: normalizeString(parsed.cloudToken),
       defaultProfileId: normalizeString(parsed.defaultProfileId),
       daemonPort: parsed.daemonPort,

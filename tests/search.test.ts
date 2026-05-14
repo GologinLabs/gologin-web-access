@@ -10,11 +10,11 @@ import {
   parseGoogleSearchResults,
 } from "../src/lib/search";
 
-test("buildSearchAttemptPlan prefers unlocker first and browser fallback last", () => {
+test("buildSearchAttemptPlan prefers scraping first and browser fallback last", () => {
   assert.deepEqual(buildSearchAttemptPlan("auto", true), [
-    { engine: "google", source: "unlocker" },
-    { engine: "duckduckgo", source: "unlocker" },
-    { engine: "bing", source: "unlocker" },
+    { engine: "google", source: "scraping" },
+    { engine: "duckduckgo", source: "scraping" },
+    { engine: "bing", source: "scraping" },
     { engine: "bing", source: "browser" },
   ]);
   assert.deepEqual(buildSearchAttemptPlan("browser", false), []);

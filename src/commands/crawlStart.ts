@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { loadConfig, requireWebUnlockerKey } from "../config";
+import { loadConfig, requireScrapingApiKey } from "../config";
 import { createJob } from "../lib/jobRegistry";
 import { spawnDetachedNodeInvocation } from "../lib/selfCli";
 
@@ -34,7 +34,7 @@ export function buildCrawlStartCommand(): Command {
         },
       ) => {
         const config = await loadConfig();
-        requireWebUnlockerKey(config);
+        requireScrapingApiKey(config);
 
         const args = buildCrawlArgs(url, options);
         const job = await createJob(config, {

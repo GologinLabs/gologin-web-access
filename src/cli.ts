@@ -74,7 +74,7 @@ import { runDoctor } from "./doctor";
 import { toCliError } from "./lib/errors";
 import { printError, printText } from "./lib/output";
 
-const CLI_VERSION = "0.3.4";
+const CLI_VERSION = "0.3.5";
 
 async function main(): Promise<void> {
   const program = new Command();

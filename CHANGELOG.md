@@ -5,6 +5,12 @@
 - browser automation is now embedded directly in `gologin-web-access`, so one repo and one install contains both Scraping API and Cloud Browser flows
 - doctor now reports the embedded browser runtime source and version
 
+## 0.3.5 - 2026-05-14
+
+- renamed the internal stateless scraping layer from Web Unlocker to Scraping API
+- config files now write `scrapingApiKey`, while legacy `webUnlockerApiKey` configs and old env aliases still load
+- `renderSource` and search transport values now use `scraping`; `unlocker` remains accepted as a legacy `--source` alias
+
 ## 0.3.2 - 2026-04-03
 
 - added unified page outcome classification across `read`, `scrape-json`, and `batch-scrape`

@@ -6,7 +6,7 @@ import {
   detectStructuredBlockReason,
   shouldUseBrowserFallback,
 } from "../src/lib/structuredScrape";
-import type { ScrapeJsonData } from "../src/lib/unlocker";
+import type { ScrapeJsonData } from "../src/lib/scrapingApi";
 
 function makeData(overrides: Partial<ScrapeJsonData> = {}): ScrapeJsonData {
   return {

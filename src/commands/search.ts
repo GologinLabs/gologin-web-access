@@ -41,12 +41,12 @@ function normalizeLimit(value: string): number {
   return Math.min(Math.floor(parsed), 100);
 }
 
-function normalizeSource(value: string): "auto" | "unlocker" | "browser" {
-  if (value === "scraping" || value === "scraping-api") {
-    return "unlocker";
+function normalizeSource(value: string): "auto" | "scraping" | "browser" {
+  if (value === "scraping" || value === "scraping-api" || value === "unlocker") {
+    return "scraping";
   }
 
-  if (value === "auto" || value === "unlocker" || value === "browser") {
+  if (value === "auto" || value === "browser") {
     return value;
   }
 

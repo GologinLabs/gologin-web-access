@@ -1,18 +1,18 @@
 import { promises as fs } from "fs";
 import path from "path";
 import { Command } from "commander";
-import { loadConfig, requireWebUnlockerKey } from "../config";
+import { loadConfig, requireScrapingApiKey } from "../config";
 import type { NextActionHint, PageOutcome } from "../lib/pageOutcome";
 import { printText } from "../lib/output";
 import { readHtmlContent, readMarkdownContent, readTextContent, normalizeReadSourceMode } from "../lib/readSource";
 import { normalizeStructuredFallbackMode, scrapeStructuredJson } from "../lib/structuredScrape";
 import { ScrapeFormat } from "../lib/types";
-import { ScrapeRequestOptions, scrapeMarkdown, scrapeRenderedHtml, scrapeText } from "../lib/unlocker";
-import { addProfileOption, addUnlockerRequestOptions, normalizeUnlockerRequestOptions, resolveOutputPath } from "./shared";
+import { ScrapeRequestOptions, scrapeMarkdown, scrapeRenderedHtml, scrapeText } from "../lib/scrapingApi";
+import { addProfileOption, addScrapingApiRequestOptions, normalizeScrapingApiRequestOptions, resolveOutputPath } from "./shared";
 
 export function buildBatchScrapeCommand(): Command {
   return addProfileOption(
-    addUnlockerRequestOptions(
+    addScrapingApiRequestOptions(
       new Command("batch-scrape")
         .description("Fetch multiple pages through Scraping API and print a JSON array of results.")
         .argument("<urls...>", "One or more URLs")
@@ -46,9 +46,9 @@ export function buildBatchScrapeCommand(): Command {
             const format = normalizeFormat(options.format);
             const source = normalizeReadSourceMode(options.source, "auto");
             const usingBrowserOnlyMainContent = Boolean(options.onlyMainContent) && format !== "json" && source === "browser";
-            const apiKey = usingBrowserOnlyMainContent ? "" : requireWebUnlockerKey(config);
+            const apiKey = usingBrowserOnlyMainContent ? "" : requireScrapingApiKey(config);
             const concurrency = Math.max(1, Number(options.concurrency) || 4);
-            const requestOptions = normalizeUnlockerRequestOptions(options);
+            const requestOptions = normalizeScrapingApiRequestOptions(options);
             const fallback = normalizeStructuredFallbackMode(options.fallback);
             const results = await mapWithConcurrency(urls, concurrency, async (url) => {
               try {
@@ -128,7 +128,7 @@ async function formatOutput(
   requestOptions: ScrapeRequestOptions,
   fallback: "none" | "browser",
   options: {
-    source: "auto" | "unlocker" | "browser";
+    source: "auto" | "scraping" | "browser";
     onlyMainContent: boolean;
     profile?: string;
   },
@@ -137,7 +137,7 @@ async function formatOutput(
   outcome?: PageOutcome;
   outcomeReason?: string;
   nextActionHint?: NextActionHint;
-  renderSource?: "unlocker" | "browser";
+  renderSource?: "scraping" | "browser";
   fallbackAttempted?: boolean;
   fallbackUsed?: boolean;
   fallbackReason?: string;
@@ -193,7 +193,7 @@ function mapReadableBatchResult(result: Awaited<ReturnType<typeof readTextConten
   outcome: PageOutcome;
   outcomeReason?: string;
   nextActionHint?: NextActionHint;
-  renderSource: "unlocker" | "browser";
+  renderSource: "scraping" | "browser";
   fallbackAttempted: boolean;
   fallbackUsed: boolean;
   fallbackReason?: string;
@@ -219,7 +219,7 @@ function mapStructuredBatchResult(result: Awaited<ReturnType<typeof scrapeStruct
   outcome: PageOutcome;
   outcomeReason?: string;
   nextActionHint?: NextActionHint;
-  renderSource: "unlocker" | "browser";
+  renderSource: "scraping" | "browser";
   fallbackAttempted: boolean;
   fallbackUsed: boolean;
   fallbackReason?: string;

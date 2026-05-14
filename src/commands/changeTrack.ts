@@ -1,13 +1,13 @@
 import { promises as fs } from "fs";
 import path from "path";
 import { Command } from "commander";
-import { loadConfig, requireWebUnlockerKey } from "../config";
+import { loadConfig, requireScrapingApiKey } from "../config";
 import { buildTrackingKey, compareAndPersistSnapshot, normalizeTrackingFormat, scrapeForTracking } from "../lib/changeTracking";
 import { printJson, printText } from "../lib/output";
-import { addUnlockerRequestOptions, normalizeUnlockerRequestOptions } from "./shared";
+import { addScrapingApiRequestOptions, normalizeScrapingApiRequestOptions } from "./shared";
 
 export function buildChangeTrackCommand(): Command {
-  return addUnlockerRequestOptions(new Command("change-track")
+  return addScrapingApiRequestOptions(new Command("change-track")
     .description("Track a page over time and report whether it changed since the last snapshot.")
     .argument("<url>", "Target URL")
     .option("--format <format>", "html, markdown, text, or json", "markdown")
@@ -20,10 +20,10 @@ export function buildChangeTrackCommand(): Command {
         options: { format: string; key?: string; json?: boolean; output?: string; retry?: string; backoffMs?: string; timeoutMs?: string }
       ) => {
         const config = await loadConfig();
-        const apiKey = requireWebUnlockerKey(config);
+        const apiKey = requireScrapingApiKey(config);
         const format = normalizeTrackingFormat(options.format);
         const key = buildTrackingKey(url, options.key);
-        const snapshot = await scrapeForTracking(url, apiKey, format, normalizeUnlockerRequestOptions(options));
+        const snapshot = await scrapeForTracking(url, apiKey, format, normalizeScrapingApiRequestOptions(options));
         const result = await compareAndPersistSnapshot(config, {
           key,
           url,

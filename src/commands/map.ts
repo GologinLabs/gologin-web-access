@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { loadConfig, requireWebUnlockerKey } from "../config";
+import { loadConfig, requireScrapingApiKey } from "../config";
 import { printJson } from "../lib/output";
 import { mapSite } from "../lib/crawl";
 
@@ -32,7 +32,7 @@ export function buildMapCommand(): Command {
         },
       ) => {
         const config = await loadConfig();
-        const apiKey = requireWebUnlockerKey(config);
+        const apiKey = requireScrapingApiKey(config);
         const result = await mapSite(url, apiKey, {
           limit: normalizePositiveInt(options.limit, 100),
           maxDepth: normalizeNonNegativeInt(options.maxDepth, 2),

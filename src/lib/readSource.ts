@@ -9,13 +9,13 @@ import {
   scrapeRenderedHtml,
   type ScrapeRequestMeta,
   type ScrapeRequestOptions,
-} from "./unlocker";
+} from "./scrapingApi";
 
-export type ReadSourceMode = "auto" | "unlocker" | "browser";
+export type ReadSourceMode = "auto" | "scraping" | "browser";
 
 export interface ReadContentEnvelope {
   content: string;
-  renderSource: "unlocker" | "browser";
+  renderSource: "scraping" | "browser";
   fallbackAttempted: boolean;
   fallbackUsed: boolean;
   fallbackReason?: string;
@@ -28,7 +28,7 @@ export interface ReadContentEnvelope {
 
 export interface RenderedHtmlEnvelope {
   html: string;
-  renderSource: "unlocker" | "browser";
+  renderSource: "scraping" | "browser";
   fallbackAttempted: boolean;
   fallbackUsed: boolean;
   fallbackReason?: string;
@@ -44,11 +44,11 @@ export function normalizeReadSourceMode(value: string | undefined, defaultMode: 
     return defaultMode;
   }
 
-  if (value === "scraping" || value === "scraping-api") {
-    return "unlocker";
+  if (value === "scraping" || value === "scraping-api" || value === "unlocker") {
+    return "scraping";
   }
 
-  if (value === "auto" || value === "unlocker" || value === "browser") {
+  if (value === "auto" || value === "browser") {
     return value;
   }
 
@@ -129,42 +129,42 @@ export async function readRenderedHtmlContent(
     };
   }
 
-  const unlocker = await scrapeRenderedHtml(url, apiKey, options.request);
-  if (source === "unlocker") {
+  const scraping = await scrapeRenderedHtml(url, apiKey, options.request);
+  if (source === "scraping") {
     return {
-      html: unlocker.content,
-      renderSource: "unlocker",
+      html: scraping.content,
+      renderSource: "scraping",
       fallbackAttempted: false,
       fallbackUsed: false,
       outcome: "ok",
-      request: unlocker.request,
+      request: scraping.request,
     };
   }
 
-  const unlockerText = htmlToText(unlocker.content);
-  const assessment = assessReadableContent(unlocker.content, unlockerText);
-  const outcomeAssessment = assessReadablePageOutcome(unlocker.content, unlockerText, {
+  const scrapingText = htmlToText(scraping.content);
+  const assessment = assessReadableContent(scraping.content, scrapingText);
+  const outcomeAssessment = assessReadablePageOutcome(scraping.content, scrapingText, {
     looksIncomplete: assessment.shouldFallback,
     incompleteReason: assessment.reason,
   });
   if (!assessment.shouldFallback) {
     return {
-      html: unlocker.content,
-      renderSource: "unlocker",
+      html: scraping.content,
+      renderSource: "scraping",
       fallbackAttempted: false,
       fallbackUsed: false,
       outcome: outcomeAssessment.outcome,
       outcomeReason: outcomeAssessment.reason,
       nextActionHint: outcomeAssessment.nextActionHint,
       warning: outcomeAssessment.warning,
-      request: unlocker.request,
+      request: scraping.request,
     };
   }
 
   if (!config.cloudToken) {
     return {
-      html: unlocker.content,
-      renderSource: "unlocker",
+      html: scraping.content,
+      renderSource: "scraping",
       fallbackAttempted: true,
       fallbackUsed: false,
       fallbackReason: `${assessment.reason}; GOLOGIN_TOKEN is not configured`,
@@ -172,7 +172,7 @@ export async function readRenderedHtmlContent(
       outcomeReason: outcomeAssessment.reason,
       nextActionHint: outcomeAssessment.nextActionHint,
       warning: outcomeAssessment.warning,
-      request: unlocker.request,
+      request: scraping.request,
     };
   }
 
@@ -186,7 +186,7 @@ export async function readRenderedHtmlContent(
     fallbackUsed: true,
     fallbackReason: assessment.reason,
     outcome: "ok",
-    request: unlocker.request,
+    request: scraping.request,
   };
 }
 
@@ -208,35 +208,35 @@ export function assessReadableContent(
   if (mainLength < 200 && articleLength < 200 && linkCount > 40 && normalizedContentLength < 5000) {
     return {
       shouldFallback: true,
-      reason: "Unlocker returned navigation-heavy shell with weak main/article content",
+      reason: "Scraping API returned navigation-heavy shell with weak main/article content",
     };
   }
 
   if (normalizedContentLength < 600 && (shellMarkers || linkCount > 30 || scriptCount > 10)) {
     return {
       shouldFallback: true,
-      reason: "Unlocker returned very little readable text from a likely JS-rendered page",
+      reason: "Scraping API returned very little readable text from a likely JS-rendered page",
     };
   }
 
   if (shellMarkers && mainLength < 300 && paragraphCount < 3) {
     return {
       shouldFallback: true,
-      reason: "Unlocker output looks like a JS docs shell without rendered article content",
+      reason: "Scraping API output looks like a JS docs shell without rendered article content",
     };
   }
 
   if (paragraphCount < 3 && headingCount <= 1 && linkCount > 60 && scriptCount > 15) {
     return {
       shouldFallback: true,
-      reason: "Unlocker output is link-heavy and content-light",
+      reason: "Scraping API output is link-heavy and content-light",
     };
   }
 
   if (docsUiChromeMarkers) {
     return {
       shouldFallback: true,
-      reason: "Unlocker output still contains docs UI chrome and action controls",
+      reason: "Scraping API output still contains docs UI chrome and action controls",
     };
   }
 
@@ -270,47 +270,47 @@ async function readReadableContent(
     };
   }
 
-  const unlocker = await scrapeRenderedHtml(url, apiKey, options.request);
-  const readable = extractReadableSegmentFromHtml(unlocker.content);
-  const unlockerContent = formatReadableContent(options.format, readable.html, readable.text);
-  const assessment = assessReadableContent(unlocker.content, unlockerContent);
-  const outcomeAssessment = assessReadablePageOutcome(unlocker.content, unlockerContent, {
+  const scraping = await scrapeRenderedHtml(url, apiKey, options.request);
+  const readable = extractReadableSegmentFromHtml(scraping.content);
+  const scrapingContent = formatReadableContent(options.format, readable.html, readable.text);
+  const assessment = assessReadableContent(scraping.content, scrapingContent);
+  const outcomeAssessment = assessReadablePageOutcome(scraping.content, scrapingContent, {
     looksIncomplete: assessment.shouldFallback,
     incompleteReason: assessment.reason,
   });
 
-  if (source === "unlocker") {
+  if (source === "scraping") {
     return {
-      content: unlockerContent,
-      renderSource: "unlocker",
+      content: scrapingContent,
+      renderSource: "scraping",
       fallbackAttempted: false,
       fallbackUsed: false,
       outcome: outcomeAssessment.outcome,
       outcomeReason: outcomeAssessment.reason,
       nextActionHint: outcomeAssessment.nextActionHint,
       warning: outcomeAssessment.warning,
-      request: unlocker.request,
+      request: scraping.request,
     };
   }
 
   if (!assessment.shouldFallback) {
     return {
-      content: unlockerContent,
-      renderSource: "unlocker",
+      content: scrapingContent,
+      renderSource: "scraping",
       fallbackAttempted: false,
       fallbackUsed: false,
       outcome: outcomeAssessment.outcome,
       outcomeReason: outcomeAssessment.reason,
       nextActionHint: outcomeAssessment.nextActionHint,
       warning: outcomeAssessment.warning,
-      request: unlocker.request,
+      request: scraping.request,
     };
   }
 
   if (!config.cloudToken) {
     return {
-      content: unlockerContent,
-      renderSource: "unlocker",
+      content: scrapingContent,
+      renderSource: "scraping",
       fallbackAttempted: true,
       fallbackUsed: false,
       fallbackReason: `${assessment.reason}; GOLOGIN_TOKEN is not configured`,
@@ -318,7 +318,7 @@ async function readReadableContent(
       outcomeReason: outcomeAssessment.reason,
       nextActionHint: outcomeAssessment.nextActionHint,
       warning: outcomeAssessment.warning,
-      request: unlocker.request,
+      request: scraping.request,
     };
   }
 
@@ -327,10 +327,10 @@ async function readReadableContent(
   });
   const browserContent = formatReadableContent(options.format, browser.html, browser.text);
 
-  if (meaningfulTextLength(browserContent) < Math.max(300, meaningfulTextLength(unlockerContent))) {
+  if (meaningfulTextLength(browserContent) < Math.max(300, meaningfulTextLength(scrapingContent))) {
     return {
-      content: unlockerContent,
-      renderSource: "unlocker",
+      content: scrapingContent,
+      renderSource: "scraping",
       fallbackAttempted: true,
       fallbackUsed: false,
       fallbackReason: "Browser fallback did not improve readable output",
@@ -338,7 +338,7 @@ async function readReadableContent(
       outcomeReason: outcomeAssessment.reason,
       nextActionHint: outcomeAssessment.nextActionHint,
       warning: outcomeAssessment.warning,
-      request: unlocker.request,
+      request: scraping.request,
     };
   }
 
@@ -349,7 +349,7 @@ async function readReadableContent(
     fallbackUsed: true,
     fallbackReason: assessment.reason,
     outcome: "ok",
-    request: unlocker.request,
+    request: scraping.request,
   };
 }
 

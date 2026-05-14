@@ -6,11 +6,11 @@ import { resolveProfileId } from "../config";
 import { CliError } from "./errors";
 import { runAgentCommandCapture } from "./agentCli";
 import type { ResolvedConfig } from "./types";
-import { scrapeRenderedHtml } from "./unlocker";
+import { scrapeRenderedHtml } from "./scrapingApi";
 
-export type SearchSourceMode = "auto" | "unlocker" | "browser";
+export type SearchSourceMode = "auto" | "scraping" | "browser";
 export type SearchProvider = "google" | "bing" | "duckduckgo";
-export type SearchTransport = "unlocker" | "browser";
+export type SearchTransport = "scraping" | "browser";
 
 export interface SearchOptions {
   limit: number;
@@ -116,7 +116,7 @@ export async function searchWeb(
 
     try {
       const executor =
-        planItem.source === "unlocker" ? searchViaUnlocker : searchViaBrowser;
+        planItem.source === "scraping" ? searchViaScrapingApi : searchViaBrowser;
       const result = await executor(query, config, options, planItem.engine);
       const attempt: SearchAttempt = {
         engine: planItem.engine,
@@ -216,18 +216,18 @@ export function buildSearchAttemptPlan(
     return hasCloudToken ? [{ engine: "bing", source: "browser" }] : [];
   }
 
-  if (source === "unlocker") {
+  if (source === "scraping") {
     return [
-      { engine: "google", source: "unlocker" },
-      { engine: "duckduckgo", source: "unlocker" },
-      { engine: "bing", source: "unlocker" },
+      { engine: "google", source: "scraping" },
+      { engine: "duckduckgo", source: "scraping" },
+      { engine: "bing", source: "scraping" },
     ];
   }
 
   const plan: SearchAttemptPlanItem[] = [
-    { engine: "google", source: "unlocker" },
-    { engine: "duckduckgo", source: "unlocker" },
-    { engine: "bing", source: "unlocker" },
+    { engine: "google", source: "scraping" },
+    { engine: "duckduckgo", source: "scraping" },
+    { engine: "bing", source: "scraping" },
   ];
 
   if (hasCloudToken) {
@@ -397,18 +397,18 @@ export function classifySearchPage(
   return "invalid";
 }
 
-async function searchViaUnlocker(
+async function searchViaScrapingApi(
   query: string,
   config: ResolvedConfig,
   options: SearchOptions,
   engine: SearchProvider,
 ): Promise<{ url: string; results: SearchResultItem[] }> {
-  if (!config.webUnlockerApiKey) {
+  if (!config.scrapingApiKey) {
     throw new CliError("Missing GOLOGIN_SCRAPING_API_KEY for Scraping API search.");
   }
 
   const searchUrl = buildSearchUrl(engine, query, options);
-  const scraped = await scrapeRenderedHtml(searchUrl, config.webUnlockerApiKey);
+  const scraped = await scrapeRenderedHtml(searchUrl, config.scrapingApiKey);
   const results =
     engine === "google"
       ? parseGoogleSearchResults(scraped.content, options.limit)
@@ -418,11 +418,11 @@ async function searchViaUnlocker(
   const pageState = classifySearchPage(engine, scraped.content, results);
 
   if (pageState === "blocked") {
-    throw new CliError(`Unlocker search was blocked on ${engine}.`, 1);
+    throw new CliError(`Scraping API search was blocked on ${engine}.`, 1);
   }
 
   if (pageState === "invalid") {
-    throw new CliError(`Unlocker search did not return a valid ${engine} search results page.`, 1);
+    throw new CliError(`Scraping API search did not return a valid ${engine} search results page.`, 1);
   }
 
   return {

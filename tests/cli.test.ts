@@ -15,7 +15,7 @@ test("version command prints the CLI version", async () => {
   });
 
   assert.equal(result.exitCode, 0);
-  assert.equal(result.stdout.trim(), "0.3.4");
+  assert.equal(result.stdout.trim(), "0.3.5");
 });
 
 test("read command explains the recommended two-key setup when Scraping API is missing", async () => {

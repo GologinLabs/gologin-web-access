@@ -1,15 +1,15 @@
 import { promises as fs } from "fs";
 import path from "path";
 import { Command } from "commander";
-import { loadConfig, requireWebUnlockerKey } from "../config";
+import { loadConfig, requireScrapingApiKey } from "../config";
 import { ExtractSchema } from "../lib/extract";
 import { extractUrlWithSchema } from "../lib/extractRunner";
 import { printJson } from "../lib/output";
 import { normalizeReadSourceMode } from "../lib/readSource";
-import { addUnlockerRequestOptions, normalizeUnlockerRequestOptions } from "./shared";
+import { addScrapingApiRequestOptions, normalizeScrapingApiRequestOptions } from "./shared";
 
 export function buildExtractCommand(): Command {
-  return addUnlockerRequestOptions(new Command("extract")
+  return addScrapingApiRequestOptions(new Command("extract")
     .description("Extract structured data from a page using a selector schema.")
     .argument("<url>", "Target URL")
     .requiredOption("--schema <path>", "Path to a JSON extraction schema")
@@ -18,11 +18,11 @@ export function buildExtractCommand(): Command {
     .action(async (url: string, options: { schema: string; output?: string; source?: string; retry?: string; backoffMs?: string; timeoutMs?: string }) => {
       const config = await loadConfig();
       const source = normalizeReadSourceMode(options.source, "auto");
-      const apiKey = source === "browser" ? "" : requireWebUnlockerKey(config);
+      const apiKey = source === "browser" ? "" : requireScrapingApiKey(config);
       const schema = await readSchema(path.resolve(options.schema));
       const result = await extractUrlWithSchema(url, config, apiKey, schema, {
         source,
-        request: normalizeUnlockerRequestOptions(options),
+        request: normalizeScrapingApiRequestOptions(options),
       });
 
       if (options.output) {

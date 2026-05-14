@@ -15,9 +15,9 @@ import {
   type ScrapeJsonResult,
   type ScrapeRequestMeta,
   type ScrapeRequestOptions,
-} from "./unlocker";
+} from "./scrapingApi";
 
-export type StructuredRenderSource = "unlocker" | "browser";
+export type StructuredRenderSource = "scraping" | "browser";
 export type StructuredFallbackMode = "none" | "browser";
 
 export interface StructuredScrapeEnvelope {
@@ -89,7 +89,7 @@ export async function scrapeStructuredJson(
   const result = await scrapeJson(url, apiKey, options.request);
   const fallbackMode = options.fallback ?? "none";
   let data = result.data;
-  let renderSource: StructuredRenderSource = "unlocker";
+  let renderSource: StructuredRenderSource = "scraping";
   let fallbackAttempted = false;
   let fallbackUsed = false;
   let fallbackReason: string | undefined;
@@ -106,7 +106,7 @@ export async function scrapeStructuredJson(
       data = browserData;
       renderSource = "browser";
       fallbackUsed = true;
-      fallbackReason = "unlocker structured data looked incomplete";
+      fallbackReason = "Scraping API structured data looked incomplete";
       ({ outcome, reason, nextActionHint, browserRecommended, warning } = assessStructuredPageOutcome(data));
     } else {
       fallbackReason = "browser fallback did not improve structured output";
@@ -156,7 +156,7 @@ export function makeStructuredScrapeEnvelope(
     outcome: options.outcome ?? "ok",
     outcomeReason: options.outcomeReason,
     nextActionHint: options.nextActionHint,
-    renderSource: options.renderSource ?? "unlocker",
+    renderSource: options.renderSource ?? "scraping",
     fallbackAttempted: options.fallbackAttempted ?? false,
     fallbackUsed: options.fallbackUsed ?? false,
     fallbackReason: options.fallbackReason,
